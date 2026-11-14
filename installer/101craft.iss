@@ -34,8 +34,8 @@ PrivilegesRequiredOverridesAllowed=dialog
 UninstallDisplayIcon={app}\101Craft.exe
 
 [Languages]
-Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -43,7 +43,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "{#SourceExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\templates\*.tpl"; DestDir: "{app}\Vorlagen"; Flags: ignoreversion
+Source: "..\templates\*.tpl"; DestDir: "{app}\Templates"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\101Craft"; Filename: "{app}\101Craft.exe"

@@ -2,82 +2,82 @@
 
 # 101Craft
 
-**Der schnelle Hex- und Binär-Editor, der Dateien versteht.**
+**The fast hex and binary editor that understands your files.**
 
-Bytes ansehen, bearbeiten und mit Vorlagen in lesbare Felder zerlegen –
-für Windows, Linux und macOS.
+View and edit bytes, then split file formats into readable fields with templates —
+for Windows, Linux and macOS.
 
 [![Release](https://github.com/johmarjac/101Craft/actions/workflows/release.yml/badge.svg)](https://github.com/johmarjac/101Craft/actions/workflows/release.yml)
-[![Neueste Version](https://img.shields.io/github/v/release/johmarjac/101Craft?label=Download)](https://github.com/johmarjac/101Craft/releases/latest)
-![Plattformen](https://img.shields.io/badge/Plattformen-Windows%20%7C%20Linux%20%7C%20macOS-2d78d7)
-![Rust](https://img.shields.io/badge/geschrieben%20in-Rust-b7410e)
+[![Latest release](https://img.shields.io/github/v/release/johmarjac/101Craft?label=Download)](https://github.com/johmarjac/101Craft/releases/latest)
+![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux%20%7C%20macOS-2d78d7)
+![Rust](https://img.shields.io/badge/written%20in-Rust-b7410e)
 
-![101Craft – Übersicht](docs/screenshots/overview.png)
+![101Craft – Overview](docs/screenshots/overview.png)
 
 </div>
 
 ---
 
-## Warum 101Craft?
+## Why 101Craft?
 
-Ein normaler Hex-Editor zeigt dir eine Wand aus Zahlen. **101Craft zeigt dir, was sie bedeuten.**
-Öffne ein Bild, ein Archiv oder ein Programm – 101Craft erkennt das Format, färbt jedes Feld ein
-und listet es mit Namen, Wert und Position auf. Ein Klick auf ein Feld markiert die passenden Bytes,
-ein Doppelklick auf den Wert ändert ihn direkt in der Datei.
+A normal hex editor shows you a wall of numbers. **101Craft shows you what they mean.**
+Open an image, an archive or a program — 101Craft detects the format, colours every field
+and lists it with name, value and position. Click a field to highlight the matching bytes,
+double-click a value to change it right in the file.
 
-- ⚡ **Schnell und schlank** – ein einziges Programm, keine Installation nötig (portable Version)
-- 🧩 **Vorlagen** zerlegen Dateiformate automatisch in benannte Felder
-- 🔍 **Suchen und Ersetzen** nach Text, UTF-16, Hex-Bytes oder Zahlen
-- ⚖️ **Dateien vergleichen** – Unterschiede nebeneinander, farbig markiert
-- 🧮 **Prüfsummen und Hashes** – CRC-32 bis SHA-256 mit einem Klick
-- 🌙 **Hell oder dunkel** – wie es dir gefällt
+- ⚡ **Fast and lean** — a single binary, no installation needed (portable build)
+- 🧩 **Templates** break file formats into named fields automatically
+- 🔍 **Search and replace** by text, UTF-16, hex bytes or numbers
+- ⚖️ **Compare files** — differences side by side, highlighted in colour
+- 🧮 **Checksums and hashes** — CRC-32 through SHA-256 in one click
+- 🌙 **Light or dark** — whichever you prefer
 
-## Einblicke
+## Highlights
 
 <table>
 <tr>
 <td width="50%">
 
-**Vorlagen im dunklen Design**
-Ein PNG-Bild, zerlegt in Signatur, Chunks, Breite, Höhe und Farbtiefe.
+**Templates in the dark theme**
+A PNG image broken down into signature, chunks, width, height and bit depth.
 
-![Dunkles Design mit PNG-Vorlage](docs/screenshots/dark.png)
+![Dark theme with PNG template](docs/screenshots/dark.png)
 
 </td>
 <td width="50%">
 
-**Dateien vergleichen**
-Zwei Versionen nebeneinander, jede Abweichung rot markiert und aufgelistet.
+**Comparing files**
+Two versions side by side, every difference marked red and listed.
 
-![Dateivergleich](docs/screenshots/compare.png)
+![File comparison](docs/screenshots/compare.png)
 
 </td>
 </tr>
 <tr>
 <td width="50%">
 
-**Suchen und Lesezeichen**
-Alle Treffer auf einen Blick, wichtige Stellen mit eigenen Namen merken.
+**Search and bookmarks**
+All hits at a glance, and remember important spots under your own names.
 
-![Suche und Lesezeichen](docs/screenshots/search.png)
+![Search and bookmarks](docs/screenshots/search.png)
 
 </td>
 <td width="50%">
 
-**Histogramm und Prüfsummen**
-Byte-Verteilung mit Entropie – erkennt komprimierte oder verschlüsselte Daten sofort.
+**Histogram and checksums**
+Byte distribution with entropy — spots compressed or encrypted data instantly.
 
-![Histogramm und Prüfsummen](docs/screenshots/histogram.png)
+![Histogram and checksums](docs/screenshots/histogram.png)
 
 </td>
 </tr>
 <tr>
 <td colspan="2">
 
-**Eigene Vorlagen schreiben**
-Eine einfache, C-ähnliche Sprache – direkt im Programm bearbeiten und sofort ausführen.
+**Write your own templates**
+A small, C-like language — edit it in the app and run it immediately.
 
-![Vorlagen-Editor](docs/screenshots/editor.png)
+![Template editor](docs/screenshots/editor.png)
 
 </td>
 </tr>
@@ -85,115 +85,115 @@ Eine einfache, C-ähnliche Sprache – direkt im Programm bearbeiten und sofort 
 
 ## Download
 
-Fertige Programme gibt es unter **[Releases](https://github.com/johmarjac/101Craft/releases/latest)**:
+Ready-made builds are available under **[Releases](https://github.com/johmarjac/101Craft/releases/latest)**:
 
-| System | Datei | Hinweis |
+| System | File | Notes |
 |---|---|---|
-| Windows x64 | `…-windows-x64-setup.exe` | Installer mit Startmenü-Eintrag |
-| Windows x64 | `…-windows-x64-portable.zip` | Entpacken und starten – ohne Installation, z. B. vom USB-Stick |
-| Windows ARM64 | `…-windows-arm64-setup.exe` / `…-portable.zip` | für Snapdragon- und andere ARM-Geräte |
-| Linux x64 / ARM64 | `…-linux-x64.tar.gz` / `…-linux-arm64.tar.gz` | entpacken, `./101Craft` starten |
-| macOS | `…-macos-universal.dmg` | läuft auf Apple Silicon und Intel |
+| Windows x64 | `…-windows-x64-setup.exe` | Installer with Start menu entry |
+| Windows x64 | `…-windows-x64-portable.zip` | Unzip and run — no installation, e.g. from a USB stick |
+| Windows ARM64 | `…-windows-arm64-setup.exe` / `…-portable.zip` | For Snapdragon and other ARM devices |
+| Linux x64 / ARM64 | `…-linux-x64.tar.gz` / `…-linux-arm64.tar.gz` | Unpack, then run `./101Craft` |
+| macOS | `…-macos-universal.dmg` | Runs on Apple Silicon and Intel |
 
-> **macOS:** Die App ist nicht notarisiert. Beim ersten Start mit Rechtsklick › *Öffnen* bestätigen.
+> **macOS:** The app is not notarized. On first launch, confirm with right-click › *Open*.
 
-## Alle Funktionen
+## All features
 
-**Bearbeiten**
-- Mehrere Dateien in Tabs, Hex- und Textspalte (Wechsel mit `Tab`)
-- Einfüge- und Überschreibmodus, beliebig viele Schritte rückgängig
-- Kopieren als Hex, Text oder C-Array; Einfügen von Hex oder Text
-- Bytes einfügen, Auswahl mit einem Muster füllen
-- Textansicht für UTF-8-Dateien, Drag & Drop zum Öffnen
+**Editing**
+- Multiple files in tabs, hex and text column (switch with `Tab`)
+- Insert and overwrite mode, unlimited undo steps
+- Copy as hex, text or C array; paste from hex or text
+- Insert bytes, fill a selection with a pattern
+- Text view for UTF-8 files, drag & drop to open
 
-**Verstehen**
-- **Inspektor:** Werte an der Cursorposition als int8 … int64, float, double, binär, ASCII,
-  UTF-16, DOS-Datum/-Zeit, Unix-Zeit und Windows-FILETIME – per Doppelklick änderbar
-- **Vorlagen** für BMP, PNG, GIF, WAV, ZIP und EXE/DLL, automatisch beim Öffnen erkannt
-- Farbige Markierung jedes Feldes, Feldname des aktuellen Bytes in der Statusleiste
-- Little- und Big-Endian umschaltbar
+**Understanding**
+- **Inspector:** values at the cursor as int8 … int64, float, double, binary, ASCII,
+  UTF-16, DOS date/time, Unix time and Windows FILETIME — editable via double-click
+- **Templates** for BMP, PNG, GIF, WAV, ZIP and EXE/DLL, detected automatically on open
+- Coloured highlight for every field, field name of the current byte in the status bar
+- Little and big endian switchable
 
-**Finden und prüfen**
-- Suchen/Ersetzen (Text, UTF-16, Hex, 32-Bit-Zahl), „Alle finden“ mit Trefferliste
-- Gehe zu Adresse – hex (`0x1A0`, `1A0h`), dezimal oder relativ (`+16`)
-- Lesezeichen mit Namen und Farben
-- Prüfsummen: CRC-32, Adler-32, Summe 8/16/32, XOR, MD5, SHA-1, SHA-256
-- Dateivergleich nebeneinander mit synchronem Scrollen
-- Histogramm mit Entropie-Anzeige
+**Finding and checking**
+- Find/replace (text, UTF-16, hex, 32-bit number), "find all" with a hit list
+- Go to address — hex (`0x1A0`, `1A0h`), decimal or relative (`+16`)
+- Bookmarks with names and colours
+- Checksums: CRC-32, Adler-32, sum 8/16/32, XOR, MD5, SHA-1, SHA-256
+- Side-by-side file comparison with synchronised scrolling
+- Histogram with entropy display
 
-## Vorlagen selbst schreiben
+## Writing templates yourself
 
-Vorlagen beschreiben ein Dateiformat in einer kleinen, C-ähnlichen Sprache.
-101Craft liest die Felder der Reihe nach aus der Datei:
+Templates describe a file format in a small, C-like language.
+101Craft reads the fields one after another from the file:
 
 ```c
 LittleEndian();
 
 typedef struct {
-    char   magic[4];               // Kennung
+    char   magic[4];               // signature
     uint   version;
-    uint   count <comment="Anzahl der Einträge">;
+    uint   count <comment="Number of entries">;
 } HEADER;
 
 typedef struct {
     ushort id;
     ushort length;
-    uchar  data[length];           // Länge kommt aus dem Feld davor
+    uchar  data[length];           // length comes from the field before
 } ENTRY;
 
 HEADER header;
 ENTRY  entries[header.count];
 ```
 
-Unterstützt werden `struct`, `typedef`, `enum`, Arrays mit berechneter Länge, `if`/`while`/`for`,
-`local`-Variablen sowie Funktionen wie `FTell()`, `FSeek()`, `FileSize()`, `ReadUInt()` und `Printf()`.
-Die mitgelieferten Vorlagen im Ordner [`templates/`](templates) sind gute Beispiele.
+Supported are `struct`, `typedef`, `enum`, arrays with computed length, `if`/`while`/`for`,
+`local` variables and functions such as `FTell()`, `FSeek()`, `FileSize()`, `ReadUInt()` and `Printf()`.
+The bundled templates in [`templates/`](templates) are good examples.
 
-## Tastenkürzel
+## Keyboard shortcuts
 
-| Taste | Aktion |
+| Key | Action |
 |---|---|
-| `Strg+O` / `Strg+S` | Öffnen / Speichern |
-| `Strg+Z` / `Strg+Y` | Rückgängig / Wiederholen |
-| `Strg+C` / `Strg+X` / `Strg+V` | Kopieren / Ausschneiden / Einfügen |
-| `Strg+F` / `Strg+H` | Suchen / Ersetzen |
-| `F3` / `Umschalt+F3` | Weiter / rückwärts suchen |
-| `Strg+G` | Gehe zu Adresse |
-| `Strg+B` / `F2` | Lesezeichen setzen / nächstes Lesezeichen |
-| `F5` | Vorlage ausführen |
-| `Einfg` | Einfügen / Überschreiben |
-| `Tab` | Zwischen Hex- und Textspalte wechseln |
-| `Strg+Tab` | Nächste Datei |
+| `Ctrl+O` / `Ctrl+S` | Open / save |
+| `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste |
+| `Ctrl+F` / `Ctrl+H` | Find / replace |
+| `F3` / `Shift+F3` | Find next / previous |
+| `Ctrl+G` | Go to address |
+| `Ctrl+B` / `F2` | Set bookmark / next bookmark |
+| `F5` | Run template |
+| `Insert` | Insert / overwrite |
+| `Tab` | Switch between hex and text column |
+| `Ctrl+Tab` | Next file |
 
-## Selbst bauen
+## Building it yourself
 
-Voraussetzung ist [Rust](https://rustup.rs).
+You need [Rust](https://rustup.rs).
 
 ```sh
 git clone https://github.com/johmarjac/101Craft.git
 cd 101Craft
-cargo run --release -- [Dateien...]
+cargo run --release -- [files...]
 ```
 
-Unter Linux werden zusätzlich die Entwicklerpakete für X11/Wayland gebraucht
-(z. B. `libxkbcommon-dev libwayland-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev`).
+On Linux you also need the development packages for X11/Wayland
+(e.g. `libxkbcommon-dev libwayland-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev`).
 
-Hilfreiche Startoptionen:
+Useful launch options:
 
-- `--screenshot bild.png` – startet, zeichnet etwa 120 Bilder, speichert ein Bildschirmfoto und beendet sich
-- `--scene NAME` – öffnet eine Demo-Ansicht (`overview`, `dark`, `compare`, `search`, `histogram`, `editor`);
-  damit sind die Bilder in dieser README entstanden
+- `--screenshot image.png` — starts, renders about 120 frames, saves a screenshot and exits
+- `--scene NAME` — opens a demo view (`overview`, `dark`, `compare`, `search`, `histogram`, `editor`);
+  this is how the images in this README were made
 
-## Neue Version veröffentlichen
+## Publishing a new release
 
-Der GitHub-Workflow [`Release`](.github/workflows/release.yml) baut alle Plattformen
-(Windows x64/ARM64 mit Installer und portabler ZIP, Linux x64/ARM64, macOS Universal)
-und legt ein Release mit Prüfsummen an. Dazu genügt ein Versions-Tag:
+The GitHub workflow [`Release`](.github/workflows/release.yml) builds all platforms
+(Windows x64/ARM64 with installer and portable ZIP, Linux x64/ARM64, macOS Universal)
+and creates a release with checksums. A version tag is all it takes:
 
 ```sh
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-Über *Actions › Release › Run workflow* lässt sich der Build auch ohne Tag starten –
-die Dateien liegen dann als Artefakte am Lauf.
+Via *Actions › Release › Run workflow* the build can also be started without a tag —
+the artifacts are then attached to the run.

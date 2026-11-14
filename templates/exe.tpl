@@ -1,4 +1,4 @@
-// 101Craft-Vorlage: Windows-Programm (EXE/DLL, PE-Format)
+// 101Craft template: Windows program (EXE/DLL, PE format)
 LittleEndian();
 
 typedef struct {
@@ -20,7 +20,7 @@ typedef struct {
     ushort e_oemid;
     ushort e_oeminfo;
     ushort e_res2[10];
-    uint   e_lfanew <format=hex, comment="Beginn des PE-Kopfes">;
+    uint   e_lfanew <format=hex, comment="Start of the PE header">;
 } DOS_HEADER;
 
 typedef enum <ushort> {

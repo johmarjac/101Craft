@@ -2,7 +2,7 @@
 name = "craft101"
 version = "0.1.0"
 edition = "2021"
-description = "101Craft - ein Hex- und Binär-Editor"
+description = "101Craft - a hex and binary editor"
 
 [[bin]]
 name = "101Craft"

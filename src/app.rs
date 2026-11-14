@@ -6,8 +6,11 @@ use std::sync::{Arc, Mutex};
 use egui::{Color32, Key, KeyboardShortcut, Modifiers, Theme, Ui};
 
 use crate::doc::Document;
+use crate::i18n::Lang;
 use crate::template;
 use crate::tools::{self, DiffRange, SearchKind};
+
+use crate::tr;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum BottomTab {
@@ -68,6 +71,7 @@ pub struct App {
     pub little_endian: bool,
     pub dark: bool,
     pub auto_template: bool,
+    pub lang: Lang,
     pub find: FindState,
     pub goto_open: bool,
     pub goto_text: String,
@@ -98,7 +102,7 @@ pub struct App {
     pub styled: bool,
 }
 
-const DEFAULT_TEMPLATE: &str = "// Eigene Vorlage\nLittleEndian();\n\ntypedef struct {\n    char  magic[4];\n    uint  version;\n    uint  count;\n} HEADER;\n\nHEADER header;\n";
+const DEFAULT_TEMPLATE: &str = "// Custom template\nLittleEndian();\n\ntypedef struct {\n    char  magic[4];\n    uint  version;\n    uint  count;\n} HEADER;\n\nHEADER header;\n";
 
 impl App {
     pub fn new(files: Vec<PathBuf>, screenshot: Option<PathBuf>, scene: Option<String>) -> Self {
@@ -112,6 +116,7 @@ impl App {
             little_endian: true,
             dark: false,
             auto_template: true,
+            lang: crate::i18n::load(),
             find: FindState {
                 open: false,
                 replace_mode: false,
@@ -136,12 +141,12 @@ impl App {
             },
             tpl_editor: TemplateEditor {
                 open: false,
-                name: "Neue Vorlage".into(),
+                name: tr!(crate::i18n::load(), "dlg.tpled.name.default").into(),
                 source: DEFAULT_TEMPLATE.into(),
             },
             bottom_tab: BottomTab::Template,
             right_tab: RightTab::Inspector,
-            output: vec!["101Craft bereit.".into()],
+            output: vec![tr!(crate::i18n::load(), "msg.ready").into()],
             insp_edit: None,
             tpl_edit: None,
             checksum_selection_only: false,
@@ -170,9 +175,10 @@ impl App {
             app.open_path(f);
         }
         if app.docs.is_empty() {
-            let mut d = Document::new("beispiel.bmp", crate::sample::sample_bmp(), None);
+            let name = tr!(app.lang, "scene.sample.bmp");
+            let mut d = Document::new(name, crate::sample::sample_bmp(), None);
             d.bookmarks.push(crate::doc::Bookmark {
-                name: "Kennung 'BM'".into(),
+                name: tr!(app.lang, "msg.signature").into(),
                 start: 0,
                 len: 2,
                 color: Color32::from_rgb(255, 214, 120),
@@ -181,7 +187,11 @@ impl App {
             app.active = 0;
             app.auto_run_template(0);
             app.docs[0].set_cursor(0x12, false);
-            app.log("Beispieldatei 'beispiel.bmp' geöffnet – mit Datei › Öffnen eigene Dateien laden.");
+            app.log(tr!(
+                app.lang,
+                "msg.sample",
+                name = tr!(app.lang, "scene.sample.bmp")
+            ));
         }
         if let Some(s) = scene {
             crate::scenes::apply(&mut app, &s);
@@ -218,22 +228,33 @@ impl App {
                 let name = path
                     .file_name()
                     .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "Datei".into());
+                    .unwrap_or_else(|| tr!(self.lang, "msg.filefallback").into());
                 let size = data.len();
                 self.docs.push(Document::new(name.clone(), data, Some(path)));
                 self.active = self.docs.len() - 1;
-                self.log(format!("Geöffnet: {name} ({})", tools::human_size(size)));
+                self.log(tr!(
+                    self.lang,
+                    "msg.opened",
+                    name = name,
+                    size = tools::human_size(size, self.lang)
+                ));
                 if self.auto_template {
                     self.auto_run_template(self.active);
                 }
                 self.focus_hex = true;
             }
-            Err(e) => self.log(format!("Konnte {} nicht öffnen: {e}", path.display())),
+            Err(e) => self.log(tr!(
+                self.lang,
+                "msg.openfail",
+                path = path.display(),
+                e = e
+            )),
         }
     }
 
     pub fn open_dialog(&mut self) {
-        if let Some(files) = rfd::FileDialog::new().set_title("Datei öffnen").pick_files() {
+        let title = tr!(self.lang, "msg.open").to_string();
+        if let Some(files) = rfd::FileDialog::new().set_title(title).pick_files() {
             for f in files {
                 self.open_path(f);
             }
@@ -242,7 +263,7 @@ impl App {
 
     pub fn new_doc(&mut self) {
         self.untitled += 1;
-        let name = format!("Unbenannt {}", self.untitled);
+        let name = tr!(self.lang, "msg.untitled", n = self.untitled);
         self.docs.push(Document::new(name, Vec::new(), None));
         self.active = self.docs.len() - 1;
         self.focus_hex = true;
@@ -251,8 +272,9 @@ impl App {
     pub fn save(&mut self, idx: usize, save_as: bool) -> bool {
         let Some(doc) = self.docs.get(idx) else { return false };
         let path = if save_as || doc.path.is_none() {
+            let title = tr!(self.lang, "msg.saveas").to_string();
             match rfd::FileDialog::new()
-                .set_title("Speichern unter")
+                .set_title(title)
                 .set_file_name(&doc.name)
                 .save_file()
             {
@@ -271,11 +293,11 @@ impl App {
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_default();
                 doc.mark_saved();
-                self.log(format!("Gespeichert: {}", path.display()));
+                self.log(tr!(self.lang, "msg.saved", path = path.display()));
                 true
             }
             Err(e) => {
-                self.log(format!("Speichern fehlgeschlagen: {e}"));
+                self.log(tr!(self.lang, "msg.savefail", e = e));
                 false
             }
         }
@@ -316,9 +338,10 @@ impl App {
     }
 
     pub fn run_template(&mut self, idx: usize, name: &str, src: &str) {
+        let lang = self.lang;
         let Some(doc) = self.docs.get_mut(idx) else { return };
         let started = std::time::Instant::now();
-        let mut res = template::run(name, src, &doc.data);
+        let mut res = template::run(name, src, &doc.data, lang);
         res.revision = doc.revision;
         if let Some(old) = &doc.template {
             if old.name == res.name {
@@ -327,15 +350,17 @@ impl App {
         }
         doc.highlights = res.highlights();
         let ms = started.elapsed().as_millis();
-        let mut lines = vec![format!(
-            "Vorlage '{}' auf {} ausgeführt ({} Felder, {ms} ms).",
-            name,
-            doc.name,
-            res.nodes.len()
+        let mut lines = vec![tr!(
+            lang,
+            "msg.tpl.run",
+            name = crate::i18n::get(lang, name),
+            doc = doc.name,
+            n = res.nodes.len(),
+            ms = ms
         )];
         lines.extend(res.log.iter().cloned());
         if let Some(e) = &res.error {
-            lines.push(format!("Vorlagenfehler: {e}"));
+            lines.push(tr!(lang, "msg.tpl.error", e = e));
         }
         doc.template = Some(res);
         for l in lines {
@@ -346,11 +371,12 @@ impl App {
 
     pub fn rerun_template_if_stale(&mut self) {
         let idx = self.active;
+        let lang = self.lang;
         let Some(doc) = self.docs.get_mut(idx) else { return };
         let Some(t) = &doc.template else { return };
         if t.revision != doc.revision && doc.data.len() < 16 * 1024 * 1024 {
             let (n, s, exp) = (t.name.clone(), t.source.clone(), t.expanded.clone());
-            let mut res = template::run(&n, &s, &doc.data);
+            let mut res = template::run(&n, &s, &doc.data, lang);
             res.revision = doc.revision;
             res.expanded = exp;
             doc.highlights = res.highlights();
@@ -359,9 +385,11 @@ impl App {
     }
 
     pub fn run_template_file(&mut self) {
+        let title = tr!(self.lang, "msg.tpl.runfile").to_string();
+        let filter = tr!(self.lang, "dlg.runfilter").to_string();
         if let Some(p) = rfd::FileDialog::new()
-            .set_title("Vorlage ausführen")
-            .add_filter("Vorlagen", &["tpl", "bt", "txt"])
+            .set_title(title)
+            .add_filter(filter, &["tpl", "bt", "txt"])
             .pick_file()
         {
             match std::fs::read_to_string(&p) {
@@ -374,7 +402,7 @@ impl App {
                     self.tpl_editor.source = src.clone();
                     self.run_template(self.active, &name, &src);
                 }
-                Err(e) => self.log(format!("Vorlage konnte nicht gelesen werden: {e}")),
+                Err(e) => self.log(tr!(self.lang, "msg.tpl.readfail", e = e)),
             }
         }
     }
@@ -388,7 +416,7 @@ impl App {
         } else if template::detect(&doc.name, &doc.data).is_some() {
             self.auto_run_template(idx);
         } else {
-            self.log("Keine passende Vorlage gefunden – im Menü Vorlagen eine auswählen.");
+            self.log(tr!(self.lang, "msg.tpl.nomatch"));
         }
     }
 
@@ -402,9 +430,9 @@ impl App {
         let p = tools::pattern(&self.find.text, self.find.kind, self.little_endian);
         if p.is_none() {
             self.find.message = if self.find.text.is_empty() {
-                "Bitte Suchbegriff eingeben.".into()
+                tr!(self.lang, "msg.find.empty").into()
             } else {
-                "Ungültige Eingabe für diese Suchart.".into()
+                tr!(self.lang, "msg.find.badinput").into()
             };
         }
         p
@@ -430,9 +458,9 @@ impl App {
         match r {
             Some(p) => {
                 doc.select_range(p, pat.len());
-                self.find.message = format!("Gefunden bei 0x{p:X}");
+                self.find.message = tr!(self.lang, "msg.find.found", p = format!("{p:X}"));
             }
-            None => self.find.message = "Nicht gefunden.".into(),
+            None => self.find.message = tr!(self.lang, "msg.find.notfound").into(),
         }
     }
 
@@ -445,10 +473,10 @@ impl App {
         if let Some(&(p, l)) = doc.hits.first() {
             doc.select_range(p, l);
         }
-        self.find.message = format!("{n} Treffer");
+        self.find.message = tr!(self.lang, "msg.find.hits", n = n);
         self.bottom_tab = BottomTab::Search;
         let q = self.find.text.clone();
-        self.log(format!("Suche nach '{q}': {n} Treffer"));
+        self.log(tr!(self.lang, "msg.find.log", q = q, n = n));
     }
 
     pub fn replace_one(&mut self) {
@@ -457,7 +485,7 @@ impl App {
             Some(r) => r,
             None if self.find.replace.is_empty() => Vec::new(),
             None => {
-                self.find.message = "Ungültiger Ersatz.".into();
+                self.find.message = tr!(self.lang, "msg.replace.invalid").into();
                 return;
             }
         };
@@ -486,7 +514,7 @@ impl App {
         let Some(doc) = self.docs.get_mut(self.active) else { return };
         let hits = tools::find_all(&doc.data, &pat, ci, usize::MAX);
         if hits.is_empty() {
-            self.find.message = "Nicht gefunden.".into();
+            self.find.message = tr!(self.lang, "msg.find.notfound").into();
             return;
         }
         let mut out = Vec::with_capacity(doc.data.len());
@@ -500,7 +528,7 @@ impl App {
         let len = doc.data.len();
         doc.splice(0, len, &out);
         doc.cursor = 0;
-        self.find.message = format!("{} Stellen ersetzt", hits.len());
+        self.find.message = tr!(self.lang, "msg.replace.done", n = hits.len());
         let m = self.find.message.clone();
         self.log(m);
     }
@@ -520,7 +548,7 @@ impl App {
     pub fn run_compare(&mut self) {
         let (a, b) = (self.compare.a, self.compare.b);
         if a >= self.docs.len() || b >= self.docs.len() || a == b {
-            self.log("Bitte zwei verschiedene Dateien zum Vergleichen wählen.");
+            self.log(tr!(self.lang, "msg.cmp.need2"));
             return;
         }
         let res = tools::compare(&self.docs[a].data, &self.docs[b].data, 100_000);
@@ -528,11 +556,13 @@ impl App {
         self.docs[b].diff_ranges = res.iter().map(|d| (d.start, d.start + d.len_b)).collect();
         let n = res.len();
         let total: usize = res.iter().map(|d| d.len_a.max(d.len_b)).sum();
-        let msg = format!(
-            "Vergleich {} ↔ {}: {n} Unterschiede, {} abweichend",
-            self.docs[a].name,
-            self.docs[b].name,
-            tools::human_size(total)
+        let msg = tr!(
+            self.lang,
+            "msg.cmp.done",
+            a = self.docs[a].name,
+            b = self.docs[b].name,
+            n = n,
+            size = tools::human_size(total, self.lang)
         );
         self.compare.result = res;
         self.compare.pair = Some((a, b));
@@ -567,8 +597,9 @@ impl App {
 
     pub fn toggle_bookmark(&mut self) {
         let n = self.active;
+        let lang = self.lang;
         if let Some(d) = self.doc_mut() {
-            d.toggle_bookmark(n);
+            d.toggle_bookmark(n, lang);
         }
     }
 
@@ -718,15 +749,18 @@ impl App {
             match image::RgbaImage::from_raw(w as u32, h as u32, buf) {
                 Some(im) => {
                     if let Err(e) = im.save(&shot.path) {
-                        eprintln!("Bildschirmfoto konnte nicht gespeichert werden: {e}");
+                        eprintln!(
+                            "{}",
+                            tr!(self.lang, "msg.shot.savefail", e = e)
+                        );
                     }
                 }
-                None => eprintln!("Bildschirmfoto: ungültige Bildgröße"),
+                None => eprintln!("{}", tr!(self.lang, "msg.shot.badsize")),
             }
             self.quitting = true;
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         } else if self.frame > 1500 {
-            eprintln!("Bildschirmfoto kam nicht an – Abbruch.");
+            eprintln!("{}", tr!(self.lang, "msg.shot.timeout"));
             self.quitting = true;
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }

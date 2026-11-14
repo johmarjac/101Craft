@@ -318,7 +318,7 @@ impl Document {
         self.scroll_to_cursor = true;
     }
 
-    pub fn toggle_bookmark(&mut self, palette_idx: usize) {
+    pub fn toggle_bookmark(&mut self, palette_idx: usize, lang: crate::i18n::Lang) {
         let (s, e) = match self.selection_or_cursor() {
             Some(r) => r,
             None => return,
@@ -340,7 +340,7 @@ impl Document {
         ];
         let n = self.bookmarks.len() + 1;
         self.bookmarks.push(Bookmark {
-            name: format!("Lesezeichen {n}"),
+            name: crate::tr!(lang, "msg.bookmark", n = n),
             start: s,
             len: e - s,
             color: colors[(palette_idx + n) % colors.len()],

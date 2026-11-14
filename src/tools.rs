@@ -2,6 +2,10 @@
 
 use md5::Digest;
 
+use crate::i18n::{self, Lang};
+
+use crate::tr;
+
 // ---------------------------------------------------------------- inspector
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -26,23 +30,23 @@ pub enum InspKind {
 }
 
 pub const INSPECTOR_ROWS: &[(InspKind, &str)] = &[
-    (InspKind::I8, "int8 (signed byte)"),
-    (InspKind::U8, "uint8 (byte)"),
-    (InspKind::I16, "int16 (short)"),
-    (InspKind::U16, "uint16 (ushort)"),
-    (InspKind::I32, "int32 (int)"),
-    (InspKind::U32, "uint32 (uint)"),
-    (InspKind::I64, "int64"),
-    (InspKind::U64, "uint64"),
-    (InspKind::F32, "float"),
-    (InspKind::F64, "double"),
-    (InspKind::Bin, "Binär"),
-    (InspKind::Char, "Zeichen (ASCII)"),
-    (InspKind::Utf16, "Zeichen (UTF-16)"),
-    (InspKind::DosDate, "DOS-Datum"),
-    (InspKind::DosTime, "DOS-Zeit"),
-    (InspKind::UnixTime, "Unix-Zeit (time_t)"),
-    (InspKind::FileTime, "Windows FILETIME"),
+    (InspKind::I8, "insp.i8"),
+    (InspKind::U8, "insp.u8"),
+    (InspKind::I16, "insp.i16"),
+    (InspKind::U16, "insp.u16"),
+    (InspKind::I32, "insp.i32"),
+    (InspKind::U32, "insp.u32"),
+    (InspKind::I64, "insp.i64"),
+    (InspKind::U64, "insp.u64"),
+    (InspKind::F32, "insp.f32"),
+    (InspKind::F64, "insp.f64"),
+    (InspKind::Bin, "insp.bin"),
+    (InspKind::Char, "insp.char"),
+    (InspKind::Utf16, "insp.utf16"),
+    (InspKind::DosDate, "insp.dosdate"),
+    (InspKind::DosTime, "insp.dostime"),
+    (InspKind::UnixTime, "insp.unixtime"),
+    (InspKind::FileTime, "insp.filetime"),
 ];
 
 impl InspKind {
@@ -91,7 +95,7 @@ fn fmt_unix(secs: i64) -> String {
     let rem = secs.rem_euclid(86_400);
     let (y, m, d) = civil_from_days(days);
     format!(
-        "{d:02}.{m:02}.{y:04} {:02}:{:02}:{:02}",
+        "{y:04}-{m:02}-{d:02} {:02}:{:02}:{:02}",
         rem / 3600,
         (rem / 60) % 60,
         rem % 60
@@ -144,10 +148,10 @@ pub fn inspect(data: &[u8], pos: usize, kind: InspKind, le: bool) -> String {
         InspKind::DosDate => {
             let v = u as u16;
             format!(
-                "{:02}.{:02}.{:04}",
-                v & 0x1F,
+                "{:04}-{:02}-{:02}",
+                1980 + (v >> 9) as u32,
                 (v >> 5) & 0x0F,
-                1980 + (v >> 9) as u32
+                v & 0x1F
             )
         }
         InspKind::DosTime => {
@@ -229,12 +233,12 @@ pub enum SearchKind {
 }
 
 impl SearchKind {
-    pub fn label(self) -> &'static str {
+    pub fn label(self, lang: Lang) -> String {
         match self {
-            SearchKind::Text => "Text (ASCII/UTF-8)",
-            SearchKind::TextUtf16 => "Text (UTF-16)",
-            SearchKind::Hex => "Hex-Bytes",
-            SearchKind::Int32 => "Ganzzahl (32 Bit)",
+            SearchKind::Text => i18n::get(lang, "search.text"),
+            SearchKind::TextUtf16 => i18n::get(lang, "search.utf16"),
+            SearchKind::Hex => i18n::get(lang, "search.hex"),
+            SearchKind::Int32 => i18n::get(lang, "search.int32"),
         }
     }
 }
@@ -326,16 +330,16 @@ pub fn find_all(data: &[u8], pat: &[u8], ci: bool, limit: usize) -> Vec<(usize, 
 
 // ---------------------------------------------------------------- checksums
 
-pub const CHECKSUMS: &[&str] = &[
-    "CRC-32",
-    "Adler-32",
-    "Summe (8 Bit)",
-    "Summe (16 Bit)",
-    "Summe (32 Bit)",
-    "XOR (8 Bit)",
-    "MD5",
-    "SHA-1",
-    "SHA-256",
+pub const CHECKSUMS: &[(&str, &str)] = &[
+    ("CRC-32", "checksum.crc32"),
+    ("Adler-32", "checksum.adler32"),
+    ("Sum (8-bit)", "checksum.sum8"),
+    ("Sum (16-bit)", "checksum.sum16"),
+    ("Sum (32-bit)", "checksum.sum32"),
+    ("XOR (8-bit)", "checksum.xor8"),
+    ("MD5", "checksum.md5"),
+    ("SHA-1", "checksum.sha1"),
+    ("SHA-256", "checksum.sha256"),
 ];
 
 pub fn checksum(name: &str, data: &[u8]) -> String {
@@ -357,10 +361,10 @@ pub fn checksum(name: &str, data: &[u8]) -> String {
             }
             format!("{:08X}", (b << 16) | a)
         }
-        "Summe (8 Bit)" => format!("{:02X}", data.iter().fold(0u8, |s, &x| s.wrapping_add(x))),
-        "Summe (16 Bit)" => format!("{:04X}", data.iter().fold(0u16, |s, &x| s.wrapping_add(x as u16))),
-        "Summe (32 Bit)" => format!("{:08X}", data.iter().fold(0u32, |s, &x| s.wrapping_add(x as u32))),
-        "XOR (8 Bit)" => format!("{:02X}", data.iter().fold(0u8, |s, &x| s ^ x)),
+        "Sum (8-bit)" => format!("{:02X}", data.iter().fold(0u8, |s, &x| s.wrapping_add(x))),
+        "Sum (16-bit)" => format!("{:04X}", data.iter().fold(0u16, |s, &x| s.wrapping_add(x as u16))),
+        "Sum (32-bit)" => format!("{:08X}", data.iter().fold(0u32, |s, &x| s.wrapping_add(x as u32))),
+        "XOR (8-bit)" => format!("{:02X}", data.iter().fold(0u8, |s, &x| s ^ x)),
         "MD5" => hex(&md5::Md5::digest(data)),
         "SHA-1" => hex(&sha1::Sha1::digest(data)),
         "SHA-256" => hex(&sha2::Sha256::digest(data)),
@@ -418,9 +422,9 @@ pub fn compare(a: &[u8], b: &[u8], limit: usize) -> Vec<DiffRange> {
     out
 }
 
-pub fn human_size(n: usize) -> String {
+pub fn human_size(n: usize, lang: Lang) -> String {
     if n < 1024 {
-        format!("{n} Bytes")
+        tr!(lang, "unit.bytes", n = n)
     } else if n < 1024 * 1024 {
         format!("{:.1} KB", n as f64 / 1024.0)
     } else if n < 1024 * 1024 * 1024 {
@@ -471,7 +475,7 @@ mod tests {
         let d = [0x78, 0x56, 0x34, 0x12];
         assert_eq!(inspect(&d, 0, InspKind::U32, true), "305419896");
         assert_eq!(encode("0x12345678", InspKind::U32, true).unwrap(), d.to_vec());
-        assert_eq!(fmt_unix(0), "01.01.1970 00:00:00");
+        assert_eq!(fmt_unix(0), "1970-01-01 00:00:00");
     }
 
     #[test]

@@ -1,4 +1,4 @@
-// 101Craft-Vorlage: GIF-Bild (Kopf und Farbtabelle)
+// 101Craft template: GIF image (header and colour table)
 LittleEndian();
 
 typedef struct {

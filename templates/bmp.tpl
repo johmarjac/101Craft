@@ -1,12 +1,12 @@
-// 101Craft-Vorlage: Windows-Bitmap (BMP)
+// 101Craft template: Windows Bitmap (BMP)
 LittleEndian();
 
 typedef struct {
-    char   bfType[2] <comment="Kennung 'BM'">;
-    uint   bfSize <comment="Dateigröße">;
+    char   bfType[2] <comment="Signature 'BM'">;
+    uint   bfSize <comment="File size">;
     ushort bfReserved1;
     ushort bfReserved2;
-    uint   bfOffBits <format=hex, comment="Beginn der Pixeldaten">;
+    uint   bfOffBits <format=hex, comment="Start of the pixel data">;
 } BITMAPFILEHEADER;
 
 typedef struct {

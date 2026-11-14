@@ -5,15 +5,18 @@ use std::collections::HashSet;
 use egui::{pos2, vec2, Align2, Color32, CornerRadius, FontId, Rect, RichText, Sense, Stroke, Ui};
 
 use crate::app::{App, BottomTab, RightTab};
+use crate::i18n;
 use crate::template::{self, Node, Prim};
 use crate::tools::{self, InspKind, INSPECTOR_ROWS};
 
-fn tab_strip<T: PartialEq + Copy>(ui: &mut Ui, cur: &mut T, items: &[(T, &str)]) {
+use crate::tr;
+
+fn tab_strip<T: PartialEq + Copy, S: AsRef<str>>(ui: &mut Ui, cur: &mut T, items: &[(T, S)]) {
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 2.0;
         for (v, label) in items {
             let sel = *cur == *v;
-            let t = if sel { RichText::new(*label).strong() } else { RichText::new(*label) };
+            let t = if sel { RichText::new(label.as_ref()).strong() } else { RichText::new(label.as_ref()) };
             if ui.selectable_label(sel, t).clicked() {
                 *cur = *v;
             }
@@ -22,26 +25,28 @@ fn tab_strip<T: PartialEq + Copy>(ui: &mut Ui, cur: &mut T, items: &[(T, &str)])
     ui.separator();
 }
 
-fn section(ui: &mut Ui, title: &str) {
+fn section(ui: &mut Ui, title: impl AsRef<str>) {
     ui.add_space(2.0);
-    ui.label(RichText::new(title).strong().color(ui.visuals().selection.bg_fill));
+    ui.label(RichText::new(title.as_ref()).strong().color(ui.visuals().selection.bg_fill));
 }
 
 // ---------------------------------------------------------------- left
 
 pub fn workspace(app: &mut App, ui: &mut Ui) {
-    section(ui, "Geöffnete Dateien");
+    let lang = app.lang;
+    section(ui, tr!(lang, "panel.openfiles"));
     let mut activate = None;
     for (i, d) in app.docs.iter().enumerate() {
         let r = ui.selectable_label(i == app.active, d.title());
         if r.clicked() {
             activate = Some(i);
         }
-        r.on_hover_text(format!(
-            "{}\n{}",
-            d.path.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "Nicht gespeichert".into()),
-            tools::human_size(d.len())
-        ));
+        let tip = d
+            .path
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| tr!(lang, "tab.unsaved").into());
+        r.on_hover_text(format!("{}\n{}", tip, tools::human_size(d.len(), lang)));
     }
     if app.docs.is_empty() {
         ui.label(RichText::new("—").weak());
@@ -51,20 +56,26 @@ pub fn workspace(app: &mut App, ui: &mut Ui) {
         app.focus_hex = true;
     }
     ui.add_space(8.0);
-    section(ui, "Vorlagen");
-    let current = app.doc().and_then(|d| d.template.as_ref().map(|t| t.name.clone()));
+    section(ui, tr!(lang, "panel.templates"));
+    let current = app
+        .doc()
+        .and_then(|d| d.template.as_ref().map(|t| t.name.clone()));
     let mut run = None;
     for b in template::BUILTINS {
         let sel = current.as_deref() == Some(b.name);
+        let name = i18n::get(lang, b.name);
         if ui
-            .selectable_label(sel, format!("▸ {}", b.name))
-            .on_hover_text(format!("Endungen: {}", b.exts.join(", ")))
+            .selectable_label(sel, format!("▸ {}", name))
+            .on_hover_text(tr!(lang, "panel.extensions", exts = b.exts.join(", ")))
             .clicked()
         {
             run = Some(b);
         }
     }
-    if ui.selectable_label(false, "✏ Eigene Vorlage…").clicked() {
+    if ui
+        .selectable_label(false, tr!(lang, "panel.customtemplate"))
+        .clicked()
+    {
         app.tpl_editor.open = true;
     }
     if let Some(b) = run {
@@ -72,17 +83,17 @@ pub fn workspace(app: &mut App, ui: &mut Ui) {
     }
     ui.add_space(8.0);
     if let Some(d) = app.doc() {
-        section(ui, "Datei");
+        section(ui, tr!(lang, "panel.file"));
         egui::Grid::new("fileinfo").num_columns(2).show(ui, |ui| {
-            ui.label(RichText::new("Größe").weak());
+            ui.label(RichText::new(tr!(lang, "panel.size")).weak());
             ui.label(format!("{}", d.len()));
             ui.end_row();
-            ui.label(RichText::new("Lesezeichen").weak());
+            ui.label(RichText::new(tr!(lang, "panel.bookmarks")).weak());
             ui.label(format!("{}", d.bookmarks.len()));
             ui.end_row();
             if let Some(t) = &d.template {
-                ui.label(RichText::new("Vorlage").weak());
-                ui.label(&t.name);
+                ui.label(RichText::new(tr!(lang, "panel.template")).weak());
+                ui.label(i18n::get(lang, &t.name));
                 ui.end_row();
             }
         });
@@ -92,14 +103,15 @@ pub fn workspace(app: &mut App, ui: &mut Ui) {
 // ---------------------------------------------------------------- right
 
 pub fn right_panel(app: &mut App, ui: &mut Ui) {
+    let lang = app.lang;
     let mut tab = app.right_tab;
     tab_strip(
         ui,
         &mut tab,
         &[
-            (RightTab::Inspector, "Inspektor"),
-            (RightTab::Bookmarks, "Lesezeichen"),
-            (RightTab::Checksum, "Prüfsumme"),
+            (RightTab::Inspector, tr!(lang, "panel.inspector")),
+            (RightTab::Bookmarks, tr!(lang, "panel.bookmarks")),
+            (RightTab::Checksum, tr!(lang, "panel.checksum")),
         ],
     );
     app.right_tab = tab;
@@ -111,14 +123,15 @@ pub fn right_panel(app: &mut App, ui: &mut Ui) {
 }
 
 fn inspector(app: &mut App, ui: &mut Ui) {
+    let lang = app.lang;
     let le = app.little_endian;
     let Some(d) = app.docs.get(app.active) else {
-        ui.label("Keine Datei");
+        ui.label(tr!(lang, "panel.nofile"));
         return;
     };
     let pos = d.cursor;
     ui.horizontal(|ui| {
-        ui.label(RichText::new(format!("Ab 0x{pos:X}")).monospace());
+        ui.label(RichText::new(tr!(lang, "panel.from", pos = format!("{pos:X}"))).monospace());
         ui.separator();
         if ui.selectable_label(app.little_endian, "Little").clicked() {
             app.little_endian = true;
@@ -130,7 +143,7 @@ fn inspector(app: &mut App, ui: &mut Ui) {
     let values: Vec<(usize, InspKind, &str, String)> = INSPECTOR_ROWS
         .iter()
         .enumerate()
-        .map(|(i, (k, n))| (i, *k, *n, tools::inspect(&d.data, pos, *k, le)))
+        .map(|(i, (k, key))| (i, *k, *key, tools::inspect(&d.data, pos, *k, le)))
         .collect();
     let mut commit: Option<(InspKind, String)> = None;
     let mut start_edit = None;
@@ -141,8 +154,8 @@ fn inspector(app: &mut App, ui: &mut Ui) {
             .striped(true)
             .min_col_width(110.0)
             .show(ui, |ui| {
-                for (i, k, name, val) in &values {
-                    ui.label(RichText::new(*name).weak());
+                for (i, k, key, val) in &values {
+                    ui.label(RichText::new(tr!(lang, key)).weak());
                     match &mut app.insp_edit {
                         Some((row, text)) if *row == *i => {
                             let r = ui.add(egui::TextEdit::singleline(text).desired_width(150.0).font(FontId::monospace(12.5)));
@@ -156,12 +169,12 @@ fn inspector(app: &mut App, ui: &mut Ui) {
                         _ => {
                             let r = ui.add(egui::Label::new(RichText::new(val).monospace()).sense(Sense::click()));
                             let r = if k.editable() {
-                                r.on_hover_text("Doppelklick zum Bearbeiten")
+                                r.on_hover_text(tr!(lang, "panel.inspector.edit"))
                             } else {
                                 r
                             };
                             if r.double_clicked() && k.editable() && pos < d.len() {
-                                start_edit = Some((*i, val.trim_matches('\'').to_string()));
+                                start_edit = Some((*i, val.trim_matches('\\').to_string()));
                             }
                         }
                     }
@@ -169,7 +182,7 @@ fn inspector(app: &mut App, ui: &mut Ui) {
                 }
             });
         ui.add_space(6.0);
-        ui.label(RichText::new("Werte ab der Cursorposition. Doppelklick auf einen Wert, um ihn zu ändern.").weak().small());
+        ui.label(RichText::new(tr!(lang, "panel.inspector.hint")).weak().small());
     });
     if let Some(s) = start_edit {
         app.insp_edit = Some(s);
@@ -191,33 +204,35 @@ fn inspector(app: &mut App, ui: &mut Ui) {
                     }
                 }
             }
-            None => app.status = format!("'{text}' passt nicht in diesen Typ."),
+            None => app.status = tr!(lang, "panel.err.type", text = text),
         }
     }
 }
 
 fn bookmarks(app: &mut App, ui: &mut Ui) {
+    let lang = app.lang;
     let pal_dark = app.dark;
     let Some(d) = app.docs.get_mut(app.active) else {
-        ui.label("Keine Datei");
+        ui.label(tr!(lang, "panel.nofile"));
         return;
     };
-    if ui.button("🔖 Lesezeichen an Cursor/Auswahl").clicked() {
+    if ui.button(tr!(lang, "panel.bm.add")).clicked() {
         let n = app.active;
-        d.toggle_bookmark(n);
+        d.toggle_bookmark(n, lang);
     }
     ui.add_space(4.0);
     if d.bookmarks.is_empty() {
-        ui.label(RichText::new("Noch keine Lesezeichen. Bytes markieren und Strg+B drücken.").weak());
+        let ctrl = tr!(lang, "key.ctrl");
+        ui.label(RichText::new(tr!(lang, "panel.bm.empty", ctrl = ctrl)).weak());
         return;
     }
     let mut remove = None;
     let mut jump = None;
     egui::ScrollArea::vertical().id_salt("bm").show(ui, |ui| {
         egui::Grid::new("bmgrid").num_columns(4).striped(true).show(ui, |ui| {
-            ui.label(RichText::new("Name").weak());
-            ui.label(RichText::new("Adresse").weak());
-            ui.label(RichText::new("Länge").weak());
+            ui.label(RichText::new(tr!(lang, "panel.bm.name")).weak());
+            ui.label(RichText::new(tr!(lang, "panel.bm.address")).weak());
+            ui.label(RichText::new(tr!(lang, "panel.bm.length")).weak());
             ui.label("");
             ui.end_row();
             for (i, b) in d.bookmarks.iter_mut().enumerate() {
@@ -231,7 +246,11 @@ fn bookmarks(app: &mut App, ui: &mut Ui) {
                     jump = Some((b.start, b.len));
                 }
                 ui.label(format!("{}", b.len));
-                if ui.small_button("✕").on_hover_text("Entfernen").clicked() {
+                if ui
+                    .small_button("✕")
+                    .on_hover_text(tr!(lang, "panel.bm.remove"))
+                    .clicked()
+                {
                     remove = Some(i);
                 }
                 ui.end_row();
@@ -247,14 +266,15 @@ fn bookmarks(app: &mut App, ui: &mut Ui) {
 }
 
 fn checksum(app: &mut App, ui: &mut Ui) {
+    let lang = app.lang;
     let has_sel = app.doc().map(|d| d.selection().is_some()).unwrap_or(false);
     ui.horizontal(|ui| {
-        ui.radio_value(&mut app.checksum_selection_only, false, "Ganze Datei");
+        ui.radio_value(&mut app.checksum_selection_only, false, tr!(lang, "panel.cs.whole"));
         ui.add_enabled_ui(has_sel, |ui| {
-            ui.radio_value(&mut app.checksum_selection_only, true, "Auswahl");
+            ui.radio_value(&mut app.checksum_selection_only, true, tr!(lang, "panel.cs.selection"));
         });
     });
-    if ui.button("# Prüfsummen berechnen").clicked() {
+    if ui.button(tr!(lang, "panel.cs.compute")).clicked() {
         if let Some(d) = app.doc() {
             let data: &[u8] = if app.checksum_selection_only && has_sel {
                 d.selected_bytes()
@@ -264,9 +284,9 @@ fn checksum(app: &mut App, ui: &mut Ui) {
             let n = data.len();
             app.checksum_results = tools::CHECKSUMS
                 .iter()
-                .map(|c| (c.to_string(), tools::checksum(c, data)))
+                .map(|(id, key)| (tr!(lang, key).to_string(), tools::checksum(id, data)))
                 .collect();
-            app.log(format!("Prüfsummen über {} berechnet.", tools::human_size(n)));
+            app.log(tr!(lang, "panel.cs.done", size = tools::human_size(n, lang)));
         }
     }
     ui.add_space(4.0);
@@ -274,9 +294,13 @@ fn checksum(app: &mut App, ui: &mut Ui) {
     egui::ScrollArea::vertical().id_salt("cs").show(ui, |ui| {
         for (name, val) in &app.checksum_results {
             ui.horizontal(|ui| {
-                ui.label(RichText::new(name).weak());
+                ui.label(RichText::new(name.as_str()).weak());
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.small_button("📋").on_hover_text("Kopieren").clicked() {
+                    if ui
+                        .small_button("📋")
+                        .on_hover_text(tr!(lang, "panel.cs.copy"))
+                        .clicked()
+                    {
                         copy = Some(val.clone());
                     }
                 });
@@ -287,30 +311,35 @@ fn checksum(app: &mut App, ui: &mut Ui) {
     });
     if let Some(c) = copy {
         ui.ctx().copy_text(c);
-        app.status = "In die Zwischenablage kopiert".into();
+        app.status = tr!(lang, "panel.cs.copied").into();
     }
 }
 
 // ---------------------------------------------------------------- bottom
 
 pub fn bottom_panel(app: &mut App, ui: &mut Ui) {
+    let lang = app.lang;
     let mut tab = app.bottom_tab;
     let hits = app.doc().map(|d| d.hits.len()).unwrap_or(0);
-    let search_label = if hits > 0 { format!("Suchergebnisse ({hits})") } else { "Suchergebnisse".into() };
-    let cmp_label = if app.compare.pair.is_some() {
-        format!("Vergleich ({})", app.compare.result.len())
+    let search_label = if hits > 0 {
+        tr!(lang, "panel.bottom.search.n", n = hits)
     } else {
-        "Vergleich".into()
+        tr!(lang, "panel.bottom.search").into()
+    };
+    let cmp_label = if app.compare.pair.is_some() {
+        tr!(lang, "panel.bottom.compare.n", n = app.compare.result.len())
+    } else {
+        tr!(lang, "panel.bottom.compare").into()
     };
     tab_strip(
         ui,
         &mut tab,
         &[
-            (BottomTab::Template, "Vorlagenergebnis"),
-            (BottomTab::Search, &search_label),
-            (BottomTab::Compare, &cmp_label),
-            (BottomTab::Histogram, "Histogramm"),
-            (BottomTab::Output, "Ausgabe"),
+            (BottomTab::Template, tr!(lang, "panel.bottom.template")),
+            (BottomTab::Search, search_label),
+            (BottomTab::Compare, cmp_label),
+            (BottomTab::Histogram, tr!(lang, "panel.bottom.histogram")),
+            (BottomTab::Output, tr!(lang, "panel.bottom.output")),
         ],
     );
     app.bottom_tab = tab;
@@ -356,19 +385,20 @@ fn insp_kind(p: Prim) -> InspKind {
 }
 
 fn template_results(app: &mut App, ui: &mut Ui) {
+    let lang = app.lang;
     let dark = app.dark;
     let Some(d) = app.docs.get(app.active) else {
-        ui.label("Keine Datei");
+        ui.label(tr!(lang, "panel.nofile"));
         return;
     };
     let Some(t) = &d.template else {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Keine Vorlage aktiv. Eine Vorlage zerlegt die Datei in benannte Felder.").weak());
+            ui.label(RichText::new(tr!(lang, "panel.tpl.empty")).weak());
         });
         let mut run = None;
         ui.horizontal_wrapped(|ui| {
             for b in template::BUILTINS {
-                if ui.button(b.name).clicked() {
+                if ui.button(i18n::get(lang, b.name)).clicked() {
                     run = Some(b);
                 }
             }
@@ -381,11 +411,11 @@ fn template_results(app: &mut App, ui: &mut Ui) {
     let cursor_path = t.path_at(d.cursor);
     let deepest = cursor_path.last().cloned();
     ui.horizontal(|ui| {
-        ui.label(RichText::new(format!("Vorlage: {}", t.name)).strong());
+        ui.label(RichText::new(tr!(lang, "panel.tpl.name", name = i18n::get(lang, &t.name))).strong());
         if let Some(e) = &t.error {
             ui.label(RichText::new(format!("⚠ {e}")).color(Color32::from_rgb(210, 90, 40)));
         } else {
-            ui.label(RichText::new("✔ ohne Fehler").color(Color32::from_rgb(40, 150, 70)));
+            ui.label(RichText::new(tr!(lang, "panel.tpl.ok")).color(Color32::from_rgb(40, 150, 70)));
         }
     });
     let mut rows = Vec::new();
@@ -396,7 +426,14 @@ fn template_results(app: &mut App, ui: &mut Ui) {
     let rh = 20.0;
     let scale = (ui.available_width() / 1000.0).clamp(0.75, 1.6);
     let cols = [0.0f32, 270.0, 520.0, 610.0, 680.0, 860.0].map(|c| c * scale);
-    let titles = ["Name", "Wert", "Start", "Größe", "Typ", "Kommentar"];
+    let titles = [
+        tr!(lang, "panel.tpl.col.name"),
+        tr!(lang, "panel.tpl.col.value"),
+        tr!(lang, "panel.tpl.col.start"),
+        tr!(lang, "panel.tpl.col.size"),
+        tr!(lang, "panel.tpl.col.type"),
+        tr!(lang, "panel.tpl.col.comment"),
+    ];
     let (hdr, _) = ui.allocate_exact_size(vec2(ui.available_width(), rh), Sense::hover());
     let vis = ui.visuals().clone();
     ui.painter().rect_filled(hdr, CornerRadius::ZERO, vis.faint_bg_color);
@@ -493,13 +530,14 @@ fn template_results(app: &mut App, ui: &mut Ui) {
                         toggle = Some(row.id.clone());
                     }
                 }
+                let edit_hint = if n.prim.is_some() {
+                    format!("\n{}", tr!(lang, "panel.tpl.edit"))
+                } else {
+                    String::new()
+                };
                 resp.on_hover_text(format!(
-                    "{} {}\nStart 0x{:X}, {} Bytes{}",
-                    n.type_name,
-                    n.name,
-                    n.offset,
-                    n.size,
-                    if n.prim.is_some() { "\nDoppelklick auf den Wert zum Ändern" } else { "" }
+                    "{} {}\nStart 0x{:X}, {} bytes{}",
+                    n.type_name, n.name, n.offset, n.size, edit_hint
                 ));
             }
         });
@@ -536,9 +574,10 @@ fn template_results(app: &mut App, ui: &mut Ui) {
                 Some(bytes) => {
                     let d = &mut app.docs[app.active];
                     d.splice(off, bytes.len(), &bytes);
-                    app.log(format!("Feld {} auf {text} gesetzt.", id.trim_start_matches('/').replace('/', ".")));
+                    let path = id.trim_start_matches('/').replace('/', ".");
+                    app.log(tr!(lang, "panel.tpl.set", path = path, value = text));
                 }
-                None => app.status = format!("'{text}' passt nicht in diesen Typ."),
+                None => app.status = tr!(lang, "panel.err.type", text = text),
             }
         }
     } else if cancel {
@@ -549,9 +588,13 @@ fn template_results(app: &mut App, ui: &mut Ui) {
 }
 
 fn search_results(app: &mut App, ui: &mut Ui) {
-    let Some(d) = app.docs.get(app.active) else { return };
+    let lang = app.lang;
+    let Some(d) = app.docs.get(app.active) else {
+        return;
+    };
     if d.hits.is_empty() {
-        ui.label(RichText::new("Keine Suchergebnisse. Strg+F öffnet die Suche, „Alle finden“ listet alle Treffer hier.").weak());
+        let ctrl = tr!(lang, "key.ctrl");
+        ui.label(RichText::new(tr!(lang, "panel.search.empty", ctrl = ctrl)).weak());
         return;
     }
     let mut select = None;
@@ -575,7 +618,8 @@ fn search_results(app: &mut App, ui: &mut Ui) {
                 let cy = rect.center().y;
                 painter.text(pos2(rect.min.x + 6.0, cy), Align2::LEFT_CENTER, format!("{}", i + 1), mono.clone(), vis.weak_text_color());
                 painter.text(pos2(rect.min.x + 70.0, cy), Align2::LEFT_CENTER, format!("0x{p:08X}"), mono.clone(), vis.text_color());
-                painter.text(pos2(rect.min.x + 180.0, cy), Align2::LEFT_CENTER, format!("{l} Bytes"), mono.clone(), vis.weak_text_color());
+                let len_txt = tr!(lang, "panel.search.bytes", n = l);
+                painter.text(pos2(rect.min.x + 180.0, cy), Align2::LEFT_CENTER, len_txt, mono.clone(), vis.weak_text_color());
                 let ctx_start = p.saturating_sub(4);
                 let ctx_end = (p + l + 8).min(d.len());
                 let preview: String = d.data[ctx_start..ctx_end].iter().map(|b| if (0x20..0x7f).contains(b) { *b as char } else { '.' }).collect();
@@ -592,10 +636,11 @@ fn search_results(app: &mut App, ui: &mut Ui) {
 }
 
 fn compare_results(app: &mut App, ui: &mut Ui) {
+    let lang = app.lang;
     let Some((a, b)) = app.compare.pair else {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Kein Vergleich aktiv.").weak());
-            if ui.button("⚖ Dateien vergleichen…").clicked() {
+            ui.label(RichText::new(tr!(lang, "panel.cmp.empty")).weak());
+            if ui.button(tr!(lang, "panel.cmp.open")).clicked() {
                 app.open_compare_dialog();
             }
         });
@@ -609,12 +654,25 @@ fn compare_results(app: &mut App, ui: &mut Ui) {
     ui.horizontal(|ui| {
         let n = app.compare.result.len();
         if n == 0 {
-            ui.label(RichText::new(format!("{} und {} sind identisch.", app.docs[a].name, app.docs[b].name)).color(Color32::from_rgb(40, 150, 70)));
+            let msg = tr!(
+                lang,
+                "panel.cmp.identical",
+                a = app.docs[a].name,
+                b = app.docs[b].name
+            );
+            ui.label(RichText::new(msg).color(Color32::from_rgb(40, 150, 70)));
         } else {
-            ui.label(format!("{n} Unterschiede zwischen {} (A) und {} (B)", app.docs[a].name, app.docs[b].name));
+            let msg = tr!(
+                lang,
+                "panel.cmp.count",
+                n = n,
+                a = app.docs[a].name,
+                b = app.docs[b].name
+            );
+            ui.label(msg);
         }
-        ui.checkbox(&mut app.compare.split, "Nebeneinander");
-        if ui.button("Vergleich beenden").clicked() {
+        ui.checkbox(&mut app.compare.split, tr!(lang, "panel.cmp.side"));
+        if ui.button(tr!(lang, "panel.cmp.end")).clicked() {
             end = true;
         }
     });
@@ -644,7 +702,13 @@ fn compare_results(app: &mut App, ui: &mut Ui) {
                 let ba: Vec<u8> = da.get(r.start..r.start + r.len_a).unwrap_or(&[]).iter().take(12).copied().collect();
                 let bb: Vec<u8> = db.get(r.start..r.start + r.len_b).unwrap_or(&[]).iter().take(12).copied().collect();
                 painter.text(pos2(rect.min.x + 6.0, cy), Align2::LEFT_CENTER, format!("0x{:08X}", r.start), mono.clone(), vis.text_color());
-                let kind = if r.len_a == r.len_b { format!("{} geändert", r.len_a) } else if r.len_a == 0 { format!("{} nur in B", r.len_b) } else { format!("{} nur in A", r.len_a) };
+                let kind = if r.len_a == r.len_b {
+                    tr!(lang, "panel.cmp.changed", n = r.len_a)
+                } else if r.len_a == 0 {
+                    tr!(lang, "panel.cmp.onlyb", n = r.len_b)
+                } else {
+                    tr!(lang, "panel.cmp.onlya", n = r.len_a)
+                };
                 painter.text(pos2(rect.min.x + 120.0, cy), Align2::LEFT_CENTER, kind, mono.clone(), vis.weak_text_color());
                 painter.text(pos2(rect.min.x + 260.0, cy), Align2::LEFT_CENTER, format!("A: {}", tools::hex_spaced(&ba)), mono.clone(), Color32::from_rgb(200, 60, 60));
                 painter.text(pos2(rect.min.x + 640.0, cy), Align2::LEFT_CENTER, format!("B: {}", tools::hex_spaced(&bb)), mono, Color32::from_rgb(40, 130, 60));
@@ -660,6 +724,7 @@ fn compare_results(app: &mut App, ui: &mut Ui) {
 }
 
 fn histogram(app: &mut App, ui: &mut Ui) {
+    let lang = app.lang;
     let idx = app.active;
     let Some(d) = app.docs.get(idx) else { return };
     let stale = match &app.histogram {
@@ -689,10 +754,10 @@ fn histogram(app: &mut App, ui: &mut Ui) {
     };
     let distinct = counts.iter().filter(|c| **c > 0).count();
     ui.horizontal(|ui| {
-        ui.label(format!("{} Bytes, {distinct} verschiedene Werte", total));
+        ui.label(tr!(lang, "panel.hist.count", n = total, d = distinct));
         ui.separator();
-        ui.label(format!("Entropie: {entropy:.3} Bit/Byte"))
-            .on_hover_text("Nahe 8 = zufällig/komprimiert/verschlüsselt, niedrig = viel Wiederholung");
+        ui.label(tr!(lang, "panel.hist.entropy", e = format!("{entropy:.3}")))
+            .on_hover_text(tr!(lang, "panel.hist.hint"));
     });
     let (rect, resp) = ui.allocate_exact_size(ui.available_size(), Sense::hover());
     let vis = ui.visuals().clone();
@@ -727,14 +792,23 @@ fn histogram(app: &mut App, ui: &mut Ui) {
             let c = counts[i];
             let ch = if (0x20..0x7f).contains(&i) { format!(" '{}'", i as u8 as char) } else { String::new() };
             let pct = if total > 0 { c as f64 * 100.0 / total as f64 } else { 0.0 };
-            p.text(pos2(inner.min.x + 4.0, rect.min.y + 2.0), Align2::LEFT_TOP, format!("Byte 0x{i:02X}{ch}: {c}× ({pct:.2} %)"), FontId::monospace(12.0), vis.strong_text_color());
+            let txt = tr!(
+                lang,
+                "panel.hist.byte",
+                b = format!("{i:02X}"),
+                ch = ch,
+                c = c,
+                p = format!("{pct:.2}")
+            );
+            p.text(pos2(inner.min.x + 4.0, rect.min.y + 2.0), Align2::LEFT_TOP, txt, FontId::monospace(12.0), vis.strong_text_color());
         }
     }
 }
 
 fn output(app: &mut App, ui: &mut Ui) {
+    let lang = app.lang;
     ui.horizontal(|ui| {
-        if ui.small_button("Leeren").clicked() {
+        if ui.small_button(tr!(lang, "panel.out.clear")).clicked() {
             app.output.clear();
         }
     });

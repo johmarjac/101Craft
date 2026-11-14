@@ -5,7 +5,10 @@ use std::rc::Rc;
 
 use egui::Color32;
 
+use crate::i18n::{self, Lang};
 use crate::tparse::{parse, Attrs, Expr, Stmt};
+
+use crate::tr;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Prim {
@@ -162,6 +165,7 @@ struct Interp<'a> {
     data: &'a [u8],
     pos: usize,
     le: bool,
+    lang: Lang,
     types: HashMap<String, TypeDef>,
     aliases: HashMap<String, String>,
     consts: HashMap<String, i64>,
@@ -193,7 +197,7 @@ impl<'a> Interp<'a> {
     fn tick(&mut self) -> Result<(), String> {
         self.steps += 1;
         if self.steps > MAX_STEPS {
-            return Err("Abbruch: zu viele Schritte (Endlosschleife?)".into());
+            return Err(tr!(self.lang, "err.toomanysteps"));
         }
         Ok(())
     }
@@ -201,7 +205,7 @@ impl<'a> Interp<'a> {
     fn read_prim(&self, p: Prim, at: usize) -> Result<Val, String> {
         let n = p.size();
         if at + n > self.data.len() {
-            return Err(format!("Dateiende erreicht beim Lesen an 0x{at:X}"));
+            return Err(tr!(self.lang, "err.eof_read", at = format!("{at:X}")));
         }
         let mut buf = [0u8; 8];
         buf[..n].copy_from_slice(&self.data[at..at + n]);
@@ -264,7 +268,7 @@ impl<'a> Interp<'a> {
                 };
                 if let Some(p) = base.elem {
                     if idx >= base.count {
-                        return Err(format!("Index {idx} außerhalb von {}", base.name));
+                        return Err(tr!(self.lang, "err.indexout", idx = idx, name = base.name));
                     }
                     let off = base.offset + idx * p.size();
                     let v = self.read_prim(p, off)?;
@@ -291,7 +295,7 @@ impl<'a> Interp<'a> {
                 return Ok(());
             }
         }
-        Err(format!("Unbekannte Variable '{n}' (mit 'local' anlegen)"))
+        Err(tr!(self.lang, "err.unknownvar", n = n))
     }
 
     fn eval(&mut self, e: &Expr) -> Result<Val, String> {
@@ -308,12 +312,12 @@ impl<'a> Interp<'a> {
                 } else if let Some(c) = self.consts.get(n) {
                     Val::Int(*c)
                 } else {
-                    return Err(format!("Unbekannter Name '{n}'"));
+                    return Err(tr!(self.lang, "err.unknownname", n = n));
                 }
             }
             Expr::Member(..) | Expr::Index(..) => match self.eval_path(e)? {
                 Some(n) => n.value.unwrap_or(Val::Int(0)),
-                None => return Err("Feld nicht gefunden".into()),
+                None => return Err(tr!(self.lang, "err.fieldnotfound")),
             },
             Expr::Call(name, args) => self.call(name, args)?,
             Expr::Unary(op, a) => {
@@ -343,7 +347,7 @@ impl<'a> Interp<'a> {
                 }
                 let l = self.eval(a)?;
                 let r = self.eval(b)?;
-                binop(op, l, r)?
+                binop(op, l, r, self.lang)?
             }
             Expr::Ternary(c, a, b) => {
                 if self.eval(c)?.truthy() {
@@ -359,8 +363,8 @@ impl<'a> Interp<'a> {
                 } else {
                     let cur = self
                         .get_local(n)
-                        .ok_or(format!("Unbekannte Variable '{n}'"))?;
-                    binop(&op[..op.len() - 1], cur, r)?
+                        .ok_or(tr!(self.lang, "err.unknownvar2", n = n))?;
+                    binop(&op[..op.len() - 1], cur, r, self.lang)?
                 };
                 self.set_local(n, v.clone())?;
                 v
@@ -368,7 +372,7 @@ impl<'a> Interp<'a> {
             Expr::PostInc(n, d) => {
                 let cur = self
                     .get_local(n)
-                    .ok_or(format!("Unbekannte Variable '{n}'"))?;
+                    .ok_or(tr!(self.lang, "err.unknownvar2", n = n))?;
                 self.set_local(n, Val::Int(cur.as_i() + d))?;
                 cur
             }
@@ -446,7 +450,7 @@ impl<'a> Interp<'a> {
                 }
                 let s = format_printf(&vals);
                 self.log.push(if name == "Warning" {
-                    format!("Warnung: {s}")
+                    tr!(self.lang, "err.warn", s = s)
                 } else {
                     s
                 });
@@ -461,7 +465,7 @@ impl<'a> Interp<'a> {
             }
             "Exit" => return Err(EXIT.into()),
             "sizeof" => {
-                let a = args.first().ok_or("sizeof: Argument fehlt")?;
+                let a = args.first().ok_or(tr!(self.lang, "err.fnarg.sizeof"))?;
                 if let Expr::Var(t) = a {
                     let t = self.resolve_alias(t);
                     if let Some(p) = prim_of(&t) {
@@ -470,18 +474,18 @@ impl<'a> Interp<'a> {
                 }
                 match self.eval_path(a)? {
                     Some(n) => Val::Int(n.size as i64),
-                    None => return Err("sizeof: unbekannt".into()),
+                    None => return Err(tr!(self.lang, "err.unknown.sizeof")),
                 }
             }
             "startof" => {
-                let a = args.first().ok_or("startof: Argument fehlt")?;
+                let a = args.first().ok_or(tr!(self.lang, "err.fnarg.startof"))?;
                 match self.eval_path(a)? {
                     Some(n) => Val::Int(n.offset as i64),
-                    None => return Err("startof: unbekannt".into()),
+                    None => return Err(tr!(self.lang, "err.unknown.startof")),
                 }
             }
             "exists" => {
-                let a = args.first().ok_or("exists: Argument fehlt")?;
+                let a = args.first().ok_or(tr!(self.lang, "err.fnarg.exists"))?;
                 Val::Int(self.eval_path(a).ok().flatten().is_some() as i64)
             }
             "Min" | "Max" => {
@@ -491,14 +495,14 @@ impl<'a> Interp<'a> {
             }
             "RequiresVersion" | "DisplayFormatHex" | "DisplayFormatDecimal" | "SetBackColor"
             | "SetForeColor" => Val::Int(0),
-            _ => return Err(format!("Unbekannte Funktion '{name}'")),
+            _ => return Err(tr!(self.lang, "err.unknownfunc", name = name)),
         })
     }
 
     fn push_node(&mut self, mut node: Node) -> Result<(), String> {
         self.nodes += 1;
         if self.nodes > MAX_NODES {
-            return Err("Abbruch: zu viele Felder".into());
+            return Err(tr!(self.lang, "err.toomanyfields"));
         }
         let frame = self.frames.last_mut().unwrap();
         let base = node.name.clone();
@@ -619,21 +623,24 @@ impl<'a> Interp<'a> {
                 let count = match array {
                     Some(e) => Some(
                         self.eval(e)
-                            .map_err(|m| format!("Zeile {line}: {m}"))?
+                            .map_err(|m| tr!(self.lang, "err.line", line = line, m = m))?
                             .as_i(),
                     ),
                     None => None,
                 };
                 if matches!(count, Some(c) if c < 0) {
-                    return Err(format!("Zeile {line}: negative Feldgröße für '{name}'"));
+                    return Err(tr!(self.lang, "err.negsize", line = line, name = name));
                 }
                 let node = self
                     .declare(ty, name, count.map(|c| c as usize), attrs)
                     .map_err(|m| {
-                        if m.starts_with("Zeile") || m == EXIT || m.starts_with("Abbruch") {
+                        // Errors from a nested field already carry their line number.
+                        let has_line = m.starts_with(&i18n::get(self.lang, "err.line.word"))
+                            || m.starts_with(&i18n::get(self.lang, "err.abort.word"));
+                        if has_line || m == EXIT {
                             m
                         } else {
-                            format!("Zeile {line}: {m}")
+                            tr!(self.lang, "err.line", line = line, m = m)
                         }
                     })?;
                 self.push_node(node)?;
@@ -650,7 +657,7 @@ impl<'a> Interp<'a> {
         base.color = attrs.color;
         if rt == "string" {
             if start >= self.data.len() {
-                return Err("Dateiende erreicht".into());
+                return Err(tr!(self.lang, "err.eof"));
             }
             let mut s = String::new();
             let mut i = self.pos;
@@ -695,13 +702,13 @@ impl<'a> Interp<'a> {
                     base.type_name = format!("struct {ty}[{c}]");
                     for i in 0..c {
                         if self.pos >= self.data.len() {
-                            return Err(format!("Dateiende erreicht in '{name}' bei Element {i}"));
+                            return Err(tr!(self.lang, "err.eof_in", name = name, i = i));
                         }
                         let es = self.pos;
                         let children = self.run_struct(&body)?;
                         self.nodes += 1;
                         if self.nodes > MAX_NODES {
-                            return Err("Abbruch: zu viele Felder".into());
+                            return Err(tr!(self.lang, "err.toomanyfields"));
                         }
                         let mut el = Node::new(&format!("{name}[{i}]"), format!("struct {ty}"), es);
                         el.size = self.pos - es;
@@ -715,7 +722,7 @@ impl<'a> Interp<'a> {
             base.size = self.pos - start;
             return Ok(base);
         }
-        Err(format!("Unbekannter Typ '{ty}'"))
+        Err(tr!(self.lang, "err.unknowntype", ty = ty))
     }
 
     fn run_struct(&mut self, body: &Rc<Vec<Stmt>>) -> Result<Vec<Node>, String> {
@@ -740,11 +747,14 @@ impl<'a> Interp<'a> {
                 n.value = Some(v);
             }
             Some(c) => {
-                let total = c.checked_mul(sz).ok_or("Feld zu groß")?;
+                let total = c.checked_mul(sz).ok_or(tr!(self.lang, "err.fieldbig"))?;
                 if self.pos + total > self.data.len() {
-                    return Err(format!(
-                        "Dateiende erreicht: '{name}' braucht {total} Bytes ab 0x{:X}",
-                        self.pos
+                    return Err(tr!(
+                        self.lang,
+                        "err.eof_need",
+                        name = name,
+                        total = total,
+                        pos = format!("{:X}", self.pos)
                     ));
                 }
                 n.type_name = format!("{ty}[{c}]");
@@ -764,7 +774,7 @@ impl<'a> Interp<'a> {
                         .collect::<Vec<_>>()
                         .join(" ");
                 } else {
-                    n.display = format!("[{c} Elemente]");
+                    n.display = tr!(self.lang, "err.elems", n = c);
                 }
                 if c <= CHILD_LIMIT && c > 0 && !matches!(p, Prim::Char) {
                     for i in 0..c {
@@ -820,7 +830,7 @@ fn fmt_val(v: &Val, p: Prim, hex: bool) -> String {
     }
 }
 
-fn binop(op: &str, l: Val, r: Val) -> Result<Val, String> {
+fn binop(op: &str, l: Val, r: Val, lang: Lang) -> Result<Val, String> {
     if let (Val::Str(a), Val::Str(b)) = (&l, &r) {
         return Ok(match op {
             "==" => Val::Int((a == b) as i64),
@@ -828,7 +838,7 @@ fn binop(op: &str, l: Val, r: Val) -> Result<Val, String> {
             "+" => Val::Str(format!("{a}{b}")),
             "<" => Val::Int((a < b) as i64),
             ">" => Val::Int((a > b) as i64),
-            _ => return Err(format!("Operator {op} nicht für Texte")),
+            _ => return Err(tr!(lang, "err.optext", op = op)),
         });
     }
     if matches!(l, Val::Str(_)) || matches!(r, Val::Str(_)) {
@@ -853,7 +863,7 @@ fn binop(op: &str, l: Val, r: Val) -> Result<Val, String> {
             ">=" => Val::Int((a >= b) as i64),
             "==" => Val::Int((a == b) as i64),
             "!=" => Val::Int((a != b) as i64),
-            _ => binop(op, Val::Int(a as i64), Val::Int(b as i64))?,
+            _ => binop(op, Val::Int(a as i64), Val::Int(b as i64), lang)?,
         });
     }
     let (a, b) = (l.as_i(), r.as_i());
@@ -861,7 +871,7 @@ fn binop(op: &str, l: Val, r: Val) -> Result<Val, String> {
         "+" => a.wrapping_add(b),
         "-" => a.wrapping_sub(b),
         "*" => a.wrapping_mul(b),
-        "/" | "%" if b == 0 => return Err("Division durch 0".into()),
+        "/" | "%" if b == 0 => return Err(tr!(lang, "err.div0")),
         "/" => a.wrapping_div(b),
         "%" => a.wrapping_rem(b),
         "<<" => a.wrapping_shl(b as u32),
@@ -875,7 +885,7 @@ fn binop(op: &str, l: Val, r: Val) -> Result<Val, String> {
         ">=" => (a >= b) as i64,
         "==" => (a == b) as i64,
         "!=" => (a != b) as i64,
-        _ => return Err(format!("Unbekannter Operator {op}")),
+        _ => return Err(tr!(lang, "err.unknownop", op = op)),
     }))
 }
 
@@ -950,7 +960,7 @@ fn collect_highlights(nodes: &[Node], out: &mut Vec<(usize, usize, Color32)>, id
 }
 
 /// Run a template over `data`.
-pub fn run(name: &str, src: &str, data: &[u8]) -> TemplateResult {
+pub fn run(name: &str, src: &str, data: &[u8], lang: Lang) -> TemplateResult {
     let mut res = TemplateResult {
         name: name.to_string(),
         source: src.to_string(),
@@ -960,10 +970,10 @@ pub fn run(name: &str, src: &str, data: &[u8]) -> TemplateResult {
         error: None,
         expanded: HashSet::new(),
     };
-    let prog = match parse(src) {
+    let prog = match parse(src, lang) {
         Ok(p) => p,
         Err(e) => {
-            res.error = Some(format!("Syntaxfehler: {e}"));
+            res.error = Some(tr!(lang, "err.syntax", e = e));
             return res;
         }
     };
@@ -971,6 +981,7 @@ pub fn run(name: &str, src: &str, data: &[u8]) -> TemplateResult {
         data,
         pos: 0,
         le: true,
+        lang,
         types: HashMap::new(),
         aliases: HashMap::new(),
         consts: HashMap::new(),
@@ -1047,37 +1058,37 @@ pub struct BuiltIn {
 
 pub const BUILTINS: &[BuiltIn] = &[
     BuiltIn {
-        name: "BMP-Bild",
+        name: "tpl.bmp",
         exts: &["bmp", "dib"],
         magic: b"BM",
         source: include_str!("../templates/bmp.tpl"),
     },
     BuiltIn {
-        name: "PNG-Bild",
+        name: "tpl.png",
         exts: &["png"],
         magic: b"\x89PNG",
         source: include_str!("../templates/png.tpl"),
     },
     BuiltIn {
-        name: "GIF-Bild",
+        name: "tpl.gif",
         exts: &["gif"],
         magic: b"GIF8",
         source: include_str!("../templates/gif.tpl"),
     },
     BuiltIn {
-        name: "WAV-Audio",
+        name: "tpl.wav",
         exts: &["wav"],
         magic: b"RIFF",
         source: include_str!("../templates/wav.tpl"),
     },
     BuiltIn {
-        name: "ZIP-Archiv",
+        name: "tpl.zip",
         exts: &["zip", "jar", "docx", "xlsx", "pptx", "apk"],
         magic: b"PK\x03\x04",
         source: include_str!("../templates/zip.tpl"),
     },
     BuiltIn {
-        name: "EXE/DLL (PE)",
+        name: "tpl.exe",
         exts: &["exe", "dll", "sys"],
         magic: b"MZ",
         source: include_str!("../templates/exe.tpl"),
@@ -1103,7 +1114,7 @@ mod tests {
     #[test]
     fn bmp_sample_parses() {
         let data = crate::sample::sample_bmp();
-        let r = run("bmp", BUILTINS[0].source, &data);
+        let r = run("bmp", BUILTINS[0].source, &data, Lang::En);
         assert!(r.error.is_none(), "{:?}", r.error);
         assert!(r.nodes.len() >= 3);
     }
@@ -1118,7 +1129,7 @@ mod tests {
         d.extend_from_slice(&[0, 0, 0, 0]);
         d.extend_from_slice(b"IEND");
         d.extend_from_slice(&[0xAE, 0x42, 0x60, 0x82]);
-        let r = run("png", BUILTINS[1].source, &d);
+        let r = run("png", BUILTINS[1].source, &d, Lang::En);
         assert!(r.error.is_none(), "{:?}", r.error);
         assert_eq!(r.nodes.len(), 3);
         assert_eq!(r.nodes[1].name, "chunk[0]");
@@ -1127,7 +1138,7 @@ mod tests {
     #[test]
     fn locals_and_loops() {
         let src = "local int i; local int s = 0; for (i = 0; i < 4; i++) { s += i; } uchar a[s];";
-        let r = run("t", src, &[0u8; 10]);
+        let r = run("t", src, &[0u8; 10], Lang::En);
         assert!(r.error.is_none(), "{:?}", r.error);
         assert_eq!(r.nodes[0].size, 6);
     }

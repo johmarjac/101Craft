@@ -1,4 +1,4 @@
-// 101Craft-Vorlage: WAV-Audio (RIFF)
+// 101Craft template: WAV audio (RIFF)
 LittleEndian();
 
 typedef struct {

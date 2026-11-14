@@ -1,4 +1,4 @@
-// 101Craft-Vorlage: ZIP-Archiv
+// 101Craft template: ZIP archive
 LittleEndian();
 
 typedef struct {

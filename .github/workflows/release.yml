@@ -62,8 +62,8 @@ jobs:
           New-Item -ItemType Directory -Force dist/$name | Out-Null
           Copy-Item "target/${{ matrix.target }}/release/${{ env.BIN }}.exe" dist/$name/
           Copy-Item README.md dist/$name/
-          New-Item -ItemType Directory -Force dist/$name/Vorlagen | Out-Null
-          Copy-Item templates/*.tpl dist/$name/Vorlagen/
+          New-Item -ItemType Directory -Force dist/$name/Templates | Out-Null
+          Copy-Item templates/*.tpl dist/$name/Templates/
           Compress-Archive -Path dist/$name/* -DestinationPath "dist/$name.zip"
 
       - name: Install Inno Setup
@@ -130,15 +130,15 @@ jobs:
         run: |
           VERSION=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
           NAME="101Craft-${VERSION}-linux-${{ matrix.arch }}"
-          mkdir -p "dist/$NAME/Vorlagen"
+          mkdir -p "dist/$NAME/Templates"
           cp "target/${{ matrix.target }}/release/$BIN" "dist/$NAME/"
           cp README.md "dist/$NAME/"
-          cp templates/*.tpl "dist/$NAME/Vorlagen/"
+          cp templates/*.tpl "dist/$NAME/Templates/"
           cat > "dist/$NAME/101craft.desktop" <<EOF
           [Desktop Entry]
           Type=Application
           Name=101Craft
-          Comment=Hex- und Binär-Editor
+          Comment=Hex and binary editor
           Exec=101Craft %F
           Terminal=false
           Categories=Development;Utility;
@@ -172,12 +172,12 @@ jobs:
         run: |
           VERSION=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
           APP="dist/101Craft.app"
-          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Vorlagen"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Templates"
           lipo -create \
             "target/aarch64-apple-darwin/release/$BIN" \
             "target/x86_64-apple-darwin/release/$BIN" \
             -output "$APP/Contents/MacOS/$BIN"
-          cp templates/*.tpl "$APP/Contents/Resources/Vorlagen/"
+          cp templates/*.tpl "$APP/Contents/Resources/Templates/"
           cat > "$APP/Contents/Info.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

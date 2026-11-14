@@ -4,6 +4,10 @@ use std::rc::Rc;
 
 use egui::Color32;
 
+use crate::i18n::{self, Lang};
+
+use crate::tr;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Tok {
     Ident(String),
@@ -20,7 +24,7 @@ const PUNCTS: &[&str] = &[
     "=", "+", "-", "*", "/", "%", "!", "~", "&", "|", "^", "?", ":",
 ];
 
-pub fn lex(src: &str) -> Result<Vec<(Tok, usize)>, String> {
+pub fn lex(src: &str, lang: Lang) -> Result<Vec<(Tok, usize)>, String> {
     let chars: Vec<char> = src.chars().collect();
     let mut out = Vec::new();
     let mut i = 0;
@@ -77,7 +81,7 @@ pub fn lex(src: &str) -> Result<Vec<(Tok, usize)>, String> {
                 }
                 let h: String = chars[hs..i].iter().collect();
                 let v = u64::from_str_radix(&h, 16)
-                    .map_err(|_| format!("Zeile {line}: ungültige Zahl"))?;
+                    .map_err(|_| tr!(lang, "err.badnum", line = line))?;
                 while i < chars.len() && matches!(chars[i], 'u' | 'U' | 'l' | 'L') {
                     i += 1;
                 }
@@ -92,12 +96,12 @@ pub fn lex(src: &str) -> Result<Vec<(Tok, usize)>, String> {
                 i += 1;
             }
             if t.contains('.') {
-                let f = t.parse().map_err(|_| format!("Zeile {line}: ungültige Zahl"))?;
+                let f = t.parse().map_err(|_| tr!(lang, "err.badnum", line = line))?;
                 out.push((Tok::Float(f), line));
             } else {
                 let n = t
                     .parse::<u64>()
-                    .map_err(|_| format!("Zeile {line}: ungültige Zahl"))?;
+                    .map_err(|_| tr!(lang, "err.badnum", line = line))?;
                 out.push((Tok::Num(n as i64), line));
             }
             continue;
@@ -135,7 +139,7 @@ pub fn lex(src: &str) -> Result<Vec<(Tok, usize)>, String> {
                 out.push((Tok::P(p), line));
                 i += p.len();
             }
-            None => return Err(format!("Zeile {line}: unerwartetes Zeichen '{c}'")),
+            None => return Err(tr!(lang, "err.badchar", line = line, c = c)),
         }
     }
     out.push((Tok::Eof, line));
@@ -207,16 +211,20 @@ pub struct Parser {
     toks: Vec<(Tok, usize)>,
     i: usize,
     anon: usize,
+    lang: Lang,
 }
 
 const TYPE_MODIFIERS: &[&str] = &["unsigned", "signed", "const"];
 
-pub fn parse(src: &str) -> Result<Vec<Stmt>, String> {
-    let toks = lex(src)?;
-    Parser { toks, i: 0, anon: 0 }.program()
+pub fn parse(src: &str, lang: Lang) -> Result<Vec<Stmt>, String> {
+    let toks = lex(src, lang)?;
+    Parser { toks, i: 0, anon: 0, lang }.program()
 }
 
 impl Parser {
+    fn lang(&self) -> Lang {
+        self.lang
+    }
     fn peek(&self) -> &Tok {
         &self.toks[self.i].0
     }
@@ -251,11 +259,12 @@ impl Parser {
         if self.eat_p(p) {
             Ok(())
         } else {
-            Err(format!(
-                "Zeile {}: '{}' erwartet, gefunden {}",
-                self.line(),
-                p,
-                tok_text(self.peek())
+            Err(tr!(
+                self.lang(),
+                "err.expected",
+                line = self.line(),
+                p = p,
+                t = tok_text(self.peek(), self.lang())
             ))
         }
     }
@@ -263,7 +272,12 @@ impl Parser {
         let line = self.line();
         match self.next() {
             Tok::Ident(s) => Ok(s),
-            t => Err(format!("Zeile {line}: Name erwartet, gefunden {}", tok_text(&t))),
+            t => Err(tr!(
+                self.lang(),
+                "err.expected_name",
+                line = line,
+                t = tok_text(&t, self.lang())
+            )),
         }
     }
 
@@ -280,7 +294,7 @@ impl Parser {
         let mut v = Vec::new();
         while !self.is_p("}") {
             if *self.peek() == Tok::Eof {
-                return Err("Unerwartetes Ende: '}' fehlt".into());
+                return Err(tr!(self.lang(), "err.unexpected_end"));
             }
             v.push(self.stmt()?);
         }
@@ -303,7 +317,7 @@ impl Parser {
                     Tok::Ident(s) => s,
                     Tok::Str(s) => s,
                     Tok::Num(n) => n.to_string(),
-                    t => tok_text(&t),
+                    t => tok_text(&t, self.lang()),
                 };
                 match key.as_str() {
                     "format" => a.hex = val == "hex",
@@ -314,7 +328,7 @@ impl Parser {
             }
             self.eat_p(",");
             if *self.peek() == Tok::Eof {
-                return Err("'>' fehlt".into());
+                return Err(tr!(self.lang(), "err.gt_missing"));
             }
         }
         Ok(a)
@@ -451,7 +465,7 @@ impl Parser {
                 self.next();
                 let b = self.stmt()?;
                 if !self.is_ident("while") {
-                    return Err(format!("Zeile {}: 'while' erwartet", self.line()));
+                    return Err(tr!(self.lang(), "err.dowhile", line = self.line()));
                 }
                 self.next();
                 let c = self.paren_expr()?;
@@ -494,7 +508,7 @@ impl Parser {
                     if self.eat_p("[") {
                         while !self.eat_p("]") {
                             if *self.peek() == Tok::Eof {
-                                return Err("']' fehlt".into());
+                                return Err(tr!(self.lang(), "err.bracket_missing"));
                             }
                             self.next();
                         }
@@ -698,7 +712,7 @@ impl Parser {
                 if let Expr::Var(n) = e {
                     e = Expr::PostInc(n, d);
                 } else {
-                    return Err(format!("Zeile {}: ++/-- nur bei Variablen", self.line()));
+                    return Err(tr!(self.lang(), "err.incr", line = self.line()));
                 }
             } else {
                 break;
@@ -741,19 +755,24 @@ impl Parser {
                     _ => Ok(Expr::Var(name)),
                 }
             }
-            t => Err(format!("Zeile {line}: unerwartet {}", tok_text(&t))),
+            t => Err(tr!(
+                self.lang(),
+                "err.unexpected",
+                line = line,
+                t = tok_text(&t, self.lang())
+            )),
         }
     }
 }
 
-fn tok_text(t: &Tok) -> String {
+fn tok_text(t: &Tok, lang: Lang) -> String {
     match t {
         Tok::Ident(s) => format!("'{s}'"),
         Tok::Num(n) => n.to_string(),
         Tok::Float(f) => f.to_string(),
         Tok::Str(s) => format!("\"{s}\""),
         Tok::P(p) => format!("'{p}'"),
-        Tok::Eof => "Dateiende".into(),
+        Tok::Eof => i18n::get(lang, "err.eof.tok").into(),
     }
 }
 

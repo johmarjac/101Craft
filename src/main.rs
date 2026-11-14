@@ -7,6 +7,7 @@ mod chrome;
 mod dialogs;
 mod doc;
 mod hexview;
+mod i18n;
 mod panels;
 mod sample;
 mod scenes;
@@ -53,7 +54,16 @@ fn main() -> eframe::Result {
             scene = args.next();
             if let Some(s) = &scene {
                 if !scenes::SCENES.contains(&s.as_str()) {
-                    eprintln!("Unbekannte Szene '{s}'. Möglich: {}", scenes::SCENES.join(", "));
+                    let lang = i18n::load();
+                    eprintln!(
+                        "{}",
+                        tr!(
+                            lang,
+                            "main.unknownscene",
+                            s = s,
+                            list = scenes::SCENES.join(", ")
+                        )
+                    );
                 }
             }
         } else if let Some(v) = a.strip_prefix("--screenshot=") {

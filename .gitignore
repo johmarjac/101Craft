@@ -1,2 +1,8 @@
 /target
-/shots
+/dist
+.vscode/
+.idea/
+
+# OS cruft from contributors on macOS / Windows
+.DS_Store
+Thumbs.db

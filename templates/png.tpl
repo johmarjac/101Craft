@@ -1,4 +1,4 @@
-// 101Craft-Vorlage: PNG-Bild
+// 101Craft template: PNG image
 BigEndian();
 
 uchar signature[8] <format=hex>;

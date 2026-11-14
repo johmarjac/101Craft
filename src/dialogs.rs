@@ -3,22 +3,26 @@
 use egui::{Align2, Key, RichText};
 
 use crate::app::App;
+use crate::i18n;
 use crate::template;
 use crate::tools;
 
+use crate::tr;
+
 impl App {
     pub fn dialogs(&mut self, ctx: &egui::Context) {
+        let lang = self.lang;
         let center = Align2::CENTER_CENTER;
         if self.goto_open {
             let mut open = true;
             let mut go = false;
-            egui::Window::new("Gehe zu Adresse")
+            egui::Window::new(tr!(lang, "dlg.goto.title"))
                 .open(&mut open)
                 .collapsible(false)
                 .resizable(false)
                 .anchor(center, [0.0, -120.0])
                 .show(ctx, |ui| {
-                    ui.label("0x1A0 oder 1A0h (hex), 416 (dezimal), +16 / -16 (relativ)");
+                    ui.label(tr!(lang, "dlg.goto.hint"));
                     let r = ui.add(egui::TextEdit::singleline(&mut self.goto_text).desired_width(260.0));
                     if self.goto_focus {
                         r.request_focus();
@@ -27,7 +31,7 @@ impl App {
                     if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
                         go = true;
                     }
-                    if ui.button("Springen").clicked() {
+                    if ui.button(tr!(lang, "dlg.goto.go")).clicked() {
                         go = true;
                     }
                 });
@@ -41,7 +45,7 @@ impl App {
                             self.goto_open = false;
                             self.focus_hex = true;
                         }
-                        None => self.status = "Ungültige Adresse".into(),
+                        None => self.status = tr!(lang, "dlg.goto.invalid").into(),
                     }
                 }
             }
@@ -54,15 +58,15 @@ impl App {
             let mut open = true;
             let mut run = false;
             let mut open_more = false;
-            egui::Window::new("Dateien vergleichen")
+            egui::Window::new(tr!(lang, "dlg.cmp.title"))
                 .open(&mut open)
                 .collapsible(false)
                 .resizable(false)
                 .anchor(center, [0.0, -80.0])
                 .show(ctx, |ui| {
                     if self.docs.len() < 2 {
-                        ui.label("Bitte zuerst zwei Dateien öffnen.");
-                        if ui.button("📂 Weitere Datei öffnen…").clicked() {
+                        ui.label(tr!(lang, "dlg.cmp.need2"));
+                        if ui.button(tr!(lang, "dlg.cmp.openmore")).clicked() {
                             open_more = true;
                         }
                         return;
@@ -71,7 +75,7 @@ impl App {
                     self.compare.a = self.compare.a.min(n - 1);
                     self.compare.b = self.compare.b.min(n - 1);
                     egui::Grid::new("cmpgrid").num_columns(2).show(ui, |ui| {
-                        ui.label("Datei A:");
+                        ui.label(tr!(lang, "dlg.cmp.filea"));
                         egui::ComboBox::from_id_salt("cmpa")
                             .width(260.0)
                             .selected_text(self.docs[self.compare.a].name.clone())
@@ -81,7 +85,7 @@ impl App {
                                 }
                             });
                         ui.end_row();
-                        ui.label("Datei B:");
+                        ui.label(tr!(lang, "dlg.cmp.fileb"));
                         egui::ComboBox::from_id_salt("cmpb")
                             .width(260.0)
                             .selected_text(self.docs[self.compare.b].name.clone())
@@ -92,9 +96,9 @@ impl App {
                             });
                         ui.end_row();
                     });
-                    ui.checkbox(&mut self.compare.split, "Nebeneinander anzeigen");
-                    ui.label(RichText::new("Byteweiser Vergleich an gleicher Position.").weak());
-                    if ui.button("Vergleichen").clicked() {
+                    ui.checkbox(&mut self.compare.split, tr!(lang, "dlg.cmp.side"));
+                    ui.label(RichText::new(tr!(lang, "dlg.cmp.note")).weak());
+                    if ui.button(tr!(lang, "dlg.cmp.run")).clicked() {
                         run = true;
                     }
                 });
@@ -117,24 +121,24 @@ impl App {
             let mut keep = true;
             let mut apply = false;
             let (mut c, mut v) = (count, val);
-            egui::Window::new("Bytes einfügen")
+            egui::Window::new(tr!(lang, "dlg.insert.title"))
                 .collapsible(false)
                 .resizable(false)
                 .anchor(center, [0.0, -80.0])
                 .show(ctx, |ui| {
                     egui::Grid::new("ins").show(ui, |ui| {
-                        ui.label("Anzahl:");
+                        ui.label(tr!(lang, "dlg.insert.count"));
                         ui.text_edit_singleline(&mut c);
                         ui.end_row();
-                        ui.label("Wert (Hex):");
+                        ui.label(tr!(lang, "dlg.insert.value"));
                         ui.text_edit_singleline(&mut v);
                         ui.end_row();
                     });
                     ui.horizontal(|ui| {
-                        if ui.button("Einfügen").clicked() {
+                        if ui.button(tr!(lang, "dlg.insert.apply")).clicked() {
                             apply = true;
                         }
-                        if ui.button("Abbrechen").clicked() {
+                        if ui.button(tr!(lang, "dlg.cancel")).clicked() {
                             keep = false;
                         }
                     });
@@ -150,7 +154,7 @@ impl App {
                         }
                         keep = false;
                     }
-                    _ => self.status = "Ungültige Eingabe".into(),
+                    _ => self.status = tr!(lang, "dlg.invalid").into(),
                 }
             }
             self.insert_dialog = if keep { Some((c, v)) } else { None };
@@ -160,18 +164,18 @@ impl App {
             let mut keep = true;
             let mut apply = false;
             let mut v = val;
-            egui::Window::new("Auswahl füllen")
+            egui::Window::new(tr!(lang, "dlg.fill.title"))
                 .collapsible(false)
                 .resizable(false)
                 .anchor(center, [0.0, -80.0])
                 .show(ctx, |ui| {
-                    ui.label("Muster (Hex), wird über die Auswahl wiederholt:");
+                    ui.label(tr!(lang, "dlg.fill.hint"));
                     ui.text_edit_singleline(&mut v);
                     ui.horizontal(|ui| {
-                        if ui.button("Füllen").clicked() {
+                        if ui.button(tr!(lang, "dlg.fill.apply")).clicked() {
                             apply = true;
                         }
-                        if ui.button("Abbrechen").clicked() {
+                        if ui.button(tr!(lang, "dlg.cancel")).clicked() {
                             keep = false;
                         }
                     });
@@ -188,7 +192,7 @@ impl App {
                     }
                     keep = false;
                 } else {
-                    self.status = "Ungültiges Muster".into();
+                    self.status = tr!(lang, "dlg.invalidpattern").into();
                 }
             }
             self.fill_dialog = if keep { Some(v) } else { None };
@@ -197,20 +201,20 @@ impl App {
         if let Some(idx) = self.confirm_close {
             let name = self.docs.get(idx).map(|d| d.name.clone()).unwrap_or_default();
             let mut choice = None;
-            egui::Window::new("Ungespeicherte Änderungen")
+            egui::Window::new(tr!(lang, "dlg.close.title"))
                 .collapsible(false)
                 .resizable(false)
                 .anchor(center, [0.0, 0.0])
                 .show(ctx, |ui| {
-                    ui.label(format!("'{name}' wurde geändert. Änderungen speichern?"));
+                    ui.label(tr!(lang, "dlg.close.msg", name = name));
                     ui.horizontal(|ui| {
-                        if ui.button("Speichern").clicked() {
+                        if ui.button(tr!(lang, "dlg.close.save")).clicked() {
                             choice = Some(0);
                         }
-                        if ui.button("Nicht speichern").clicked() {
+                        if ui.button(tr!(lang, "dlg.close.discard")).clicked() {
                             choice = Some(1);
                         }
-                        if ui.button("Abbrechen").clicked() {
+                        if ui.button(tr!(lang, "dlg.cancel")).clicked() {
                             choice = Some(2);
                         }
                     });
@@ -234,17 +238,17 @@ impl App {
         if self.confirm_quit {
             let mut choice = None;
             let n = self.docs.iter().filter(|d| d.modified).count();
-            egui::Window::new("101Craft beenden")
+            egui::Window::new(tr!(lang, "dlg.quit.title"))
                 .collapsible(false)
                 .resizable(false)
                 .anchor(center, [0.0, 0.0])
                 .show(ctx, |ui| {
-                    ui.label(format!("{n} Datei(en) haben ungespeicherte Änderungen. Trotzdem beenden?"));
+                    ui.label(tr!(lang, "dlg.quit.msg", n = n));
                     ui.horizontal(|ui| {
-                        if ui.button("Beenden ohne Speichern").clicked() {
+                        if ui.button(tr!(lang, "dlg.quit.yes")).clicked() {
                             choice = Some(true);
                         }
-                        if ui.button("Abbrechen").clicked() {
+                        if ui.button(tr!(lang, "dlg.cancel")).clicked() {
                             choice = Some(false);
                         }
                     });
@@ -261,41 +265,76 @@ impl App {
         }
 
         if self.about_open {
-            egui::Window::new("Über 101Craft")
+            egui::Window::new(tr!(lang, "dlg.about.title"))
                 .open(&mut self.about_open)
                 .collapsible(false)
                 .resizable(false)
                 .anchor(center, [0.0, 0.0])
                 .show(ctx, |ui| {
                     ui.heading("101Craft");
-                    ui.label("Hex- und Binär-Editor mit Vorlagen.");
-                    ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
+                    ui.label(tr!(lang, "dlg.about.tag"));
+                    ui.label(tr!(lang, "dlg.about.version", v = env!("CARGO_PKG_VERSION")));
                     ui.add_space(6.0);
-                    ui.label("Bytes ansehen und bearbeiten, Dateiformate mit Vorlagen zerlegen, suchen, vergleichen und Prüfsummen berechnen.");
+                    ui.label(tr!(lang, "dlg.about.body"));
                 });
         }
         if self.keys_open {
-            egui::Window::new("Tastenkürzel")
+            let ctrl = tr!(lang, "key.ctrl");
+            let shift = tr!(lang, "key.shift");
+            let rows: [(String, String); 13] = [
+                (
+                    format!("{ctrl}+O / {ctrl}+S"),
+                    tr!(lang, "keys.open_save", a = tr!(lang, "keys.open"), b = tr!(lang, "keys.save")),
+                ),
+                (
+                    format!("{ctrl}+Z / {ctrl}+Y"),
+                    tr!(lang, "keys.undo_redo", a = tr!(lang, "keys.undo"), b = tr!(lang, "keys.redo")),
+                ),
+                (
+                    format!("{ctrl}+C / {ctrl}+X / {ctrl}+V"),
+                    tr!(
+                        lang,
+                        "keys.clipboard",
+                        a = tr!(lang, "keys.copy"),
+                        b = tr!(lang, "keys.cut"),
+                        c = tr!(lang, "keys.paste")
+                    ),
+                ),
+                (format!("{ctrl}+A"), tr!(lang, "keys.selectall").into()),
+                (
+                    format!("{ctrl}+F / {ctrl}+H"),
+                    tr!(lang, "keys.find_replace", a = tr!(lang, "keys.find"), b = tr!(lang, "keys.replace")),
+                ),
+                (
+                    format!("F3 / {shift}+F3"),
+                    tr!(lang, "keys.next_prev", a = tr!(lang, "keys.next"), b = tr!(lang, "keys.prev")),
+                ),
+                (format!("{ctrl}+G"), tr!(lang, "keys.goto").into()),
+                (
+                    format!("{ctrl}+B / F2"),
+                    tr!(
+                        lang,
+                        "keys.bookmark_next",
+                        a = tr!(lang, "keys.bookmark"),
+                        b = tr!(lang, "keys.nextbm")
+                    ),
+                ),
+                ("F5".into(), tr!(lang, "keys.run").into()),
+                (tr!(lang, "sc.insert").into(), tr!(lang, "keys.insert").into()),
+                ("Tab".into(), tr!(lang, "keys.tab").into()),
+                (
+                    format!("{shift}+{}", tr!(lang, "keys.arrows")),
+                    tr!(lang, "keys.shiftarrows").into(),
+                ),
+                (format!("{ctrl}+Tab"), tr!(lang, "keys.nextfile").into()),
+            ];
+            egui::Window::new(tr!(lang, "dlg.keys.title"))
                 .open(&mut self.keys_open)
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
                     egui::Grid::new("keys").striped(true).show(ui, |ui| {
-                        for (k, v) in [
-                            ("Strg+O / Strg+S", "Öffnen / Speichern"),
-                            ("Strg+Z / Strg+Y", "Rückgängig / Wiederholen"),
-                            ("Strg+C / Strg+X / Strg+V", "Kopieren / Ausschneiden / Einfügen"),
-                            ("Strg+A", "Alles auswählen"),
-                            ("Strg+F / Strg+H", "Suchen / Ersetzen"),
-                            ("F3 / Umschalt+F3", "Weiter / rückwärts suchen"),
-                            ("Strg+G", "Gehe zu Adresse"),
-                            ("Strg+B / F2", "Lesezeichen setzen / nächstes"),
-                            ("F5", "Vorlage ausführen"),
-                            ("Einfg", "Einfügen / Überschreiben"),
-                            ("Tab", "Zwischen Hex- und Textspalte wechseln"),
-                            ("Umschalt+Pfeile", "Auswahl erweitern"),
-                            ("Strg+Tab", "Nächste Datei"),
-                        ] {
+                        for (k, v) in rows {
                             ui.label(RichText::new(k).monospace());
                             ui.label(v);
                             ui.end_row();
@@ -306,23 +345,24 @@ impl App {
     }
 
     fn template_editor(&mut self, ctx: &egui::Context) {
+        let lang = self.lang;
         let mut open = true;
         let mut run = false;
         let mut save = false;
         let mut load = false;
-        egui::Window::new("Vorlagen-Editor")
+        egui::Window::new(tr!(lang, "dlg.tpled.title"))
             .open(&mut open)
             .default_size([560.0, 460.0])
             .default_pos([380.0, 110.0])
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label("Name:");
+                    ui.label(tr!(lang, "dlg.tpled.name"));
                     ui.text_edit_singleline(&mut self.tpl_editor.name);
                     egui::ComboBox::from_id_salt("tplload")
-                        .selected_text("Beispiel laden…")
+                        .selected_text(tr!(lang, "dlg.tpled.loadexample"))
                         .show_ui(ui, |ui| {
                             for b in template::BUILTINS {
-                                if ui.selectable_label(false, b.name).clicked() {
+                                if ui.selectable_label(false, i18n::get(lang, b.name)).clicked() {
                                     self.tpl_editor.name = b.name.to_string();
                                     self.tpl_editor.source = b.source.to_string();
                                 }
@@ -330,21 +370,17 @@ impl App {
                         });
                 });
                 ui.horizontal(|ui| {
-                    if ui.button("▶ Auf aktuelle Datei ausführen").clicked() {
+                    if ui.button(tr!(lang, "dlg.tpled.run")).clicked() {
                         run = true;
                     }
-                    if ui.button("📂 Laden…").clicked() {
+                    if ui.button(tr!(lang, "dlg.tpled.load")).clicked() {
                         load = true;
                     }
-                    if ui.button("💾 Speichern…").clicked() {
+                    if ui.button(tr!(lang, "dlg.tpled.save")).clicked() {
                         save = true;
                     }
                 });
-                ui.label(
-                    RichText::new("C-ähnliche Sprache: struct, typedef, enum, if/while/for, local-Variablen, FTell(), FSeek(), ReadUInt(), Printf() …")
-                        .weak()
-                        .small(),
-                );
+                ui.label(RichText::new(tr!(lang, "dlg.tpled.hint")).weak().small());
                 egui::ScrollArea::vertical().id_salt("tplsrc").show(ui, |ui| {
                     ui.add(
                         egui::TextEdit::multiline(&mut self.tpl_editor.source)
@@ -362,14 +398,15 @@ impl App {
             self.run_template_file();
         }
         if save {
+            let filter = tr!(lang, "dlg.tpled.filter").to_string();
             if let Some(p) = rfd::FileDialog::new()
                 .set_file_name(format!("{}.tpl", self.tpl_editor.name))
-                .add_filter("Vorlagen", &["tpl", "bt"])
+                .add_filter(filter, &["tpl", "bt"])
                 .save_file()
             {
                 match std::fs::write(&p, &self.tpl_editor.source) {
-                    Ok(()) => self.log(format!("Vorlage gespeichert: {}", p.display())),
-                    Err(e) => self.log(format!("Speichern fehlgeschlagen: {e}")),
+                    Ok(()) => self.log(tr!(lang, "dlg.tpled.saved", path = p.display())),
+                    Err(e) => self.log(tr!(lang, "dlg.tpled.savefail", e = e)),
                 }
             }
         }
