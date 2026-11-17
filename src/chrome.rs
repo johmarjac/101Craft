@@ -402,10 +402,10 @@ impl App {
                 }
                 ui.separator();
                 egui::ComboBox::from_id_salt("lang")
-                    .width(92.0)
+                    .width(130.0)
                     .selected_text(self.lang.name())
                     .show_ui(ui, |ui| {
-                        for l in [Lang::En, Lang::De] {
+                        for &l in Lang::ALL {
                             if ui.selectable_label(self.lang == l, l.name()).clicked() {
                                 self.lang = l;
                                 crate::i18n::save(l);

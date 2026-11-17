@@ -1,4 +1,4 @@
-//! UI strings in two languages. English is the default; German falls back to English.
+//! UI strings in three languages: English (default), German, and Indonesian.
 //!
 //! Keys are dotted strings (`"menu.file"`). `get` returns the key itself for unknown
 //! keys, so free-form text such as file names can be passed straight through.
@@ -10,14 +10,18 @@ pub enum Lang {
     #[default]
     En,
     De,
+    Id,
 }
 
 impl Lang {
+    pub const ALL: &[Lang] = &[Lang::En, Lang::De, Lang::Id];
+
     /// Name shown in the switcher (endonyms, never translated).
     pub fn name(self) -> &'static str {
         match self {
             Lang::En => "English",
             Lang::De => "Deutsch",
+            Lang::Id => "Bahasa Indonesia",
         }
     }
 
@@ -25,21 +29,27 @@ impl Lang {
         match self {
             Lang::En => "en",
             Lang::De => "de",
+            Lang::Id => "id",
         }
     }
 
     pub fn from_code(s: &str) -> Self {
         match s.trim().to_ascii_lowercase().as_str() {
             "de" | "deutsch" | "german" => Lang::De,
+            "id" | "indonesia" | "indonesian" | "bahasa" | "bahasa indonesia" => Lang::Id,
             _ => Lang::En,
         }
     }
 }
 
-/// Look up a UI string. Unknown keys return the key; missing German falls back to English.
+/// Look up a UI string. Unknown keys return the key; missing translations fall back to English.
 pub fn get(lang: Lang, key: &str) -> String {
-    let de = if lang == Lang::De { de(key) } else { None };
-    match de.or_else(|| en(key)) {
+    let localized = match lang {
+        Lang::De => de(key),
+        Lang::Id => id(key),
+        Lang::En => None,
+    };
+    match localized.or_else(|| en(key)) {
         Some(s) => s.to_owned(),
         None => key.to_owned(),
     }
@@ -936,6 +946,387 @@ fn de(key: &str) -> Option<&'static str> {
     })
 }
 
+// ------------------------------------------------------------- Indonesian
+
+fn id(key: &str) -> Option<&'static str> {
+    Some(match key {
+        "key.ctrl" => "Ctrl",
+        "key.shift" => "Shift",
+        "sc.new" => "{ctrl}+N",
+        "sc.open" => "{ctrl}+O",
+        "sc.save" => "{ctrl}+S",
+        "sc.saveas" => "{ctrl}+{shift}+S",
+        "sc.close" => "{ctrl}+W",
+        "sc.undo" => "{ctrl}+Z",
+        "sc.redo" => "{ctrl}+Y",
+        "sc.copy" => "{ctrl}+C",
+        "sc.selectall" => "{ctrl}+A",
+        "sc.delete" => "Del",
+        "sc.find" => "{ctrl}+F",
+        "sc.replace" => "{ctrl}+H",
+        "sc.findnext" => "F3",
+        "sc.findprev" => "{shift}+F3",
+        "sc.goto" => "{ctrl}+G",
+        "sc.bookmark" => "{ctrl}+B",
+        "sc.nextbm" => "F2",
+        "sc.prevbm" => "{shift}+F2",
+        "sc.insert" => "Insert",
+        "sc.nextfile" => "{ctrl}+Tab",
+        "menu.file" => "File",
+        "menu.new" => "Baru",
+        "menu.open" => "Buka…",
+        "menu.save" => "Simpan",
+        "menu.saveas" => "Simpan sebagai…",
+        "menu.close" => "Tutup",
+        "menu.quit" => "Keluar",
+        "menu.edit" => "Edit",
+        "menu.undo" => "Undo",
+        "menu.redo" => "Redo",
+        "menu.copyhex" => "Salin sebagai hex",
+        "menu.copytext" => "Salin sebagai teks",
+        "menu.copyc" => "Salin sebagai C array",
+        "menu.pastehint" => "Tempel: Ctrl+V di tampilan hex",
+        "menu.selectall" => "Pilih semua",
+        "menu.deleteselection" => "Hapus seleksi",
+        "menu.insertbytes" => "Sisipkan byte…",
+        "menu.fillselection" => "Isi seleksi…",
+        "menu.mode.insert" => "Beralih ke mode sisip (insert)",
+        "menu.mode.overwrite" => "Beralih ke mode timpa (overwrite)",
+        "menu.search" => "Cari",
+        "menu.find" => "Cari…",
+        "menu.replace" => "Ganti…",
+        "menu.findnext" => "Cari berikutnya",
+        "menu.findprev" => "Cari ke belakang",
+        "menu.goto" => "Lompat ke alamat…",
+        "menu.bookmark.toggle" => "Pasang/lepas bookmark",
+        "menu.bookmark.next" => "Bookmark berikutnya",
+        "menu.bookmark.prev" => "Bookmark sebelumnya",
+        "menu.view" => "View",
+        "menu.textmode" => "Edit sebagai teks",
+        "menu.bytesperrow" => "Byte per baris",
+        "menu.byteorder" => "Urutan byte (endianness)",
+        "menu.le" => "Little-endian (Intel)",
+        "menu.be" => "Big-endian (Motorola)",
+        "menu.fontsize" => "Ukuran font",
+        "menu.dark" => "Tema gelap",
+        "menu.templates" => "Template",
+        "menu.autoapply" => "Terapkan otomatis saat dibuka",
+        "menu.rerun" => "Jalankan ulang template",
+        "menu.apply" => "Terapkan {name}",
+        "menu.editor" => "Editor template…",
+        "menu.runfile" => "Jalankan template dari file…",
+        "menu.clearresult" => "Hapus hasil template",
+        "menu.tools" => "Tools",
+        "menu.checksum" => "Checksum / Hash…",
+        "menu.compare" => "Bandingkan file…",
+        "menu.histogram" => "Histogram",
+        "menu.endcompare" => "Akhiri perbandingan",
+        "menu.help" => "Help",
+        "menu.keys" => "Pintasan keyboard",
+        "menu.about" => "Tentang 101Craft",
+        "menu.language" => "Bahasa",
+        "tb.new" => "File baru ({sc})",
+        "tb.open" => "Buka ({sc})",
+        "tb.save" => "Simpan ({sc})",
+        "tb.undo" => "Undo ({sc})",
+        "tb.redo" => "Redo ({sc})",
+        "tb.find" => "Cari ({sc})",
+        "tb.replace" => "Ganti ({sc})",
+        "tb.goto" => "Lompat ke alamat ({sc})",
+        "tb.bookmark" => "Pasang bookmark ({sc})",
+        "tb.template" => "Jalankan template (F5)",
+        "tb.tpleditor" => "Editor template",
+        "tb.checksum" => "Checksum / Hash",
+        "tb.compare" => "Bandingkan file",
+        "tb.histogram" => "Histogram",
+        "tb.bytesperrow" => "Byte/baris",
+        "tb.endian" => "Endian",
+        "tb.mode.insert" => "INS",
+        "tb.mode.overwrite" => "OVR",
+        "tb.modetip" => "Beralih mode sisip/timpa ({sc})",
+        "tab.unsaved" => "Belum disimpan",
+        "tab.close" => "Tutup",
+        "find.label" => "Cari:",
+        "find.hint" => "Teks atau hex, mis. 42 4D",
+        "find.ignorecase" => "Abaikan huruf besar/kecil",
+        "find.prevtip" => "Ke belakang ({sc})",
+        "find.nexttip" => "Cari berikutnya (F3)",
+        "find.all" => "Cari semua",
+        "find.next" => "Berikutnya ▶",
+        "find.close" => "Tutup",
+        "find.replace.toggle" => "Ganti…",
+        "find.replace.label" => "Ganti:",
+        "find.replace.one" => "Ganti",
+        "find.replace.all" => "Ganti semua",
+        "status.nofile" => "Tidak ada file yang dibuka",
+        "status.pos" => "Posisi:",
+        "status.value" => "Nilai:",
+        "status.selection" => "Seleksi: 0x{s}–0x{e} ({n} byte)",
+        "status.size" => "Ukuran:",
+        "status.field" => "Field:",
+        "status.modified" => "diubah",
+        "status.column.hex" => "Hex",
+        "status.column.text" => "Teks",
+        "central.empty" => "Tidak ada file terbuka. Seret file ke sini atau buka file.",
+        "central.open" => "📂 Buka file…",
+        "central.new" => "📄 File kosong baru",
+        "compare.a" => "A:",
+        "compare.b" => "B:",
+        "text.toobig" => "File terlalu besar untuk tampilan teks (lebih dari 8 MB).",
+        "text.invalid" => "File berisi byte yang bukan UTF-8 valid – tampilan teks hanya-baca.",
+        "panel.openfiles" => "File terbuka",
+        "panel.templates" => "Template",
+        "panel.customtemplate" => "✏ Template kustom…",
+        "panel.file" => "File",
+        "panel.size" => "Ukuran",
+        "panel.bookmarks" => "Bookmark",
+        "panel.template" => "Template",
+        "panel.extensions" => "Ekstensi: {exts}",
+        "panel.nofile" => "Tidak ada file",
+        "panel.inspector" => "Inspektor",
+        "panel.checksum" => "Checksum",
+        "panel.from" => "Dari 0x{pos}",
+        "panel.inspector.edit" => "Klik dua kali untuk mengedit",
+        "panel.inspector.hint" => "Nilai dari posisi kursor. Klik dua kali nilai untuk mengubahnya.",
+        "panel.bm.add" => "🔖 Bookmark pada kursor/seleksi",
+        "panel.bm.empty" => "Belum ada bookmark. Pilih byte dan tekan {ctrl}+B.",
+        "panel.bm.name" => "Nama",
+        "panel.bm.address" => "Alamat",
+        "panel.bm.length" => "Panjang",
+        "panel.bm.remove" => "Hapus",
+        "panel.cs.whole" => "Seluruh file",
+        "panel.cs.selection" => "Seleksi",
+        "panel.cs.compute" => "# Hitung checksum",
+        "panel.cs.done" => "Checksum dihitung untuk {size}.",
+        "panel.cs.copy" => "Salin",
+        "panel.cs.copied" => "Disalin ke papan klip",
+        "panel.bottom.template" => "Hasil template",
+        "panel.bottom.search" => "Hasil pencarian",
+        "panel.bottom.search.n" => "Hasil pencarian ({n})",
+        "panel.bottom.compare" => "Bandingkan",
+        "panel.bottom.compare.n" => "Bandingkan ({n})",
+        "panel.bottom.histogram" => "Histogram",
+        "panel.bottom.output" => "Output",
+        "panel.tpl.empty" => "Tidak ada template aktif. Template membagi file menjadi field bernama.",
+        "panel.tpl.name" => "Template: {name}",
+        "panel.tpl.ok" => "✔ tidak ada kesalahan",
+        "panel.tpl.col.name" => "Nama",
+        "panel.tpl.col.value" => "Nilai",
+        "panel.tpl.col.start" => "Mulai",
+        "panel.tpl.col.size" => "Ukuran",
+        "panel.tpl.col.type" => "Tipe",
+        "panel.tpl.col.comment" => "Komentar",
+        "panel.tpl.edit" => "Klik dua kali nilai untuk mengubahnya",
+        "panel.tpl.set" => "Field {path} diubah menjadi {value}.",
+        "panel.err.type" => "'{text}' tidak sesuai dengan tipe ini.",
+        "panel.search.empty" => "Tidak ada hasil pencarian. {ctrl}+F membuka pencarian, “Cari semua” menampilkan semua hasil di sini.",
+        "panel.search.bytes" => "{n} byte",
+        "panel.cmp.empty" => "Tidak ada perbandingan aktif.",
+        "panel.cmp.open" => "⚖ Bandingkan file…",
+        "panel.cmp.identical" => "{a} dan {b} identik.",
+        "panel.cmp.count" => "{n} perbedaan antara {a} (A) dan {b} (B)",
+        "panel.cmp.side" => "Berdampingan",
+        "panel.cmp.end" => "Akhiri perbandingan",
+        "panel.cmp.changed" => "{n} diubah",
+        "panel.cmp.onlyb" => "{n} hanya di B",
+        "panel.cmp.onlya" => "{n} hanya di A",
+        "panel.hist.count" => "{n} byte, {d} nilai berbeda",
+        "panel.hist.entropy" => "Entropi: {e} bit/byte",
+        "panel.hist.hint" => "Mendekati 8 = acak/terkompresi/terenkripsi, rendah = banyak pengulangan",
+        "panel.hist.byte" => "Byte 0x{b}{ch}: {c}× ({p} %)",
+        "panel.out.clear" => "Bersihkan",
+        "dlg.goto.title" => "Lompat ke alamat",
+        "dlg.goto.hint" => "0x1A0 atau 1A0h (hex), 416 (desimal), +16 / -16 (relatif)",
+        "dlg.goto.go" => "Lompat",
+        "dlg.goto.invalid" => "Alamat tidak valid",
+        "dlg.cmp.title" => "Bandingkan file",
+        "dlg.cmp.need2" => "Silakan buka dua file terlebih dahulu.",
+        "dlg.cmp.openmore" => "📂 Buka file lain…",
+        "dlg.cmp.filea" => "File A:",
+        "dlg.cmp.fileb" => "File B:",
+        "dlg.cmp.side" => "Tampilkan berdampingan",
+        "dlg.cmp.note" => "Perbandingan byte per byte pada posisi yang sama.",
+        "dlg.cmp.run" => "Bandingkan",
+        "dlg.insert.title" => "Sisipkan byte",
+        "dlg.insert.count" => "Jumlah:",
+        "dlg.insert.value" => "Nilai (hex):",
+        "dlg.insert.apply" => "Sisipkan",
+        "dlg.fill.title" => "Isi seleksi",
+        "dlg.fill.hint" => "Pola (hex), diulang sepanjang seleksi:",
+        "dlg.fill.apply" => "Isi",
+        "dlg.cancel" => "Batal",
+        "dlg.invalid" => "Input tidak valid",
+        "dlg.invalidpattern" => "Pola tidak valid",
+        "dlg.close.title" => "Perubahan belum disimpan",
+        "dlg.close.msg" => "“{name}” telah diubah. Simpan perubahan?",
+        "dlg.close.save" => "Simpan",
+        "dlg.close.discard" => "Jangan simpan",
+        "dlg.quit.title" => "Keluar dari 101Craft",
+        "dlg.quit.msg" => "{n} file memiliki perubahan yang belum disimpan. Tetap keluar?",
+        "dlg.quit.yes" => "Keluar tanpa menyimpan",
+        "dlg.about.title" => "Tentang 101Craft",
+        "dlg.about.tag" => "Editor hex dan biner dengan template.",
+        "dlg.about.version" => "Versi {v}",
+        "dlg.about.body" => "Lihat dan edit byte, bedah format file dengan template, cari, bandingkan, dan hitung checksum.",
+        "dlg.keys.title" => "Pintasan keyboard",
+        "keys.open" => "Buka",
+        "keys.save" => "Simpan",
+        "keys.undo" => "Undo",
+        "keys.redo" => "Redo",
+        "keys.copy" => "Salin",
+        "keys.cut" => "Potong",
+        "keys.paste" => "Tempel",
+        "keys.find" => "Cari",
+        "keys.replace" => "Ganti",
+        "keys.next" => "Cari berikutnya",
+        "keys.prev" => "Cari ke belakang",
+        "keys.bookmark" => "Pasang bookmark",
+        "keys.nextbm" => "Bookmark berikutnya",
+        "keys.arrows" => "panah",
+        "keys.open_save" => "{a} / {b}",
+        "keys.undo_redo" => "{a} / {b}",
+        "keys.clipboard" => "{a} / {b} / {c}",
+        "keys.selectall" => "Pilih semua",
+        "keys.find_replace" => "{a} / {b}",
+        "keys.next_prev" => "{a} / {b}",
+        "keys.goto" => "Lompat ke alamat",
+        "keys.bookmark_next" => "{a} / {b}",
+        "keys.run" => "Jalankan template",
+        "keys.insert" => "Sisip / timpa",
+        "keys.tab" => "Beralih antara kolom hex dan teks",
+        "keys.shiftarrows" => "Perluas seleksi",
+        "keys.nextfile" => "File berikutnya",
+        "dlg.tpled.title" => "Editor template",
+        "dlg.tpled.name" => "Nama:",
+        "dlg.tpled.name.default" => "Template baru",
+        "dlg.tpled.loadexample" => "Muat contoh…",
+        "dlg.tpled.run" => "▶ Jalankan pada file saat ini",
+        "dlg.tpled.load" => "📂 Muat…",
+        "dlg.tpled.save" => "💾 Simpan…",
+        "dlg.tpled.hint" => "Bahasa mirip C: struct, typedef, enum, if/while/for, variabel lokal, FTell(), FSeek(), ReadUInt(), Printf() …",
+        "dlg.tpled.saved" => "Template disimpan: {path}",
+        "dlg.tpled.savefail" => "Gagal menyimpan: {e}",
+        "dlg.tpled.filter" => "Template",
+        "dlg.runfilter" => "Template",
+        "msg.ready" => "101Craft siap.",
+        "msg.sample" => "File sampel “{name}” dibuka – gunakan File › Buka untuk memuat file Anda sendiri.",
+        "msg.filefallback" => "File",
+        "msg.untitled" => "Tanpa Judul {n}",
+        "msg.opened" => "Dibuka: {name} ({size})",
+        "msg.openfail" => "Tidak dapat membuka {path}: {e}",
+        "msg.open" => "Buka file",
+        "msg.saveas" => "Simpan sebagai",
+        "msg.saved" => "Disimpan: {path}",
+        "msg.savefail" => "Gagal menyimpan: {e}",
+        "msg.tpl.run" => "Template “{name}” dijalankan pada {doc} ({n} field, {ms} ms).",
+        "msg.tpl.error" => "Kesalahan template: {e}",
+        "msg.tpl.runfile" => "Jalankan template",
+        "msg.tpl.readfail" => "Tidak dapat membaca template: {e}",
+        "msg.tpl.nomatch" => "Tidak ada template yang cocok ditemukan – pilih salah satu di menu Template.",
+        "msg.find.empty" => "Silakan masukkan kata kunci pencarian.",
+        "msg.find.badinput" => "Input tidak valid untuk jenis pencarian ini.",
+        "msg.find.found" => "Ditemukan di 0x{p}",
+        "msg.find.notfound" => "Tidak ditemukan.",
+        "msg.find.hits" => "{n} ditemukan",
+        "msg.find.log" => "Pencarian untuk “{q}”: {n} hasil",
+        "msg.replace.invalid" => "Penggantian tidak valid.",
+        "msg.replace.done" => "{n} kemunculan diganti",
+        "msg.cmp.need2" => "Silakan pilih dua file berbeda untuk dibandingkan.",
+        "msg.cmp.done" => "Perbandingan {a} ↔ {b}: {n} perbedaan, {size} berbeda",
+        "msg.shot.savefail" => "Tangkapan layar tidak dapat disimpan: {e}",
+        "msg.shot.badsize" => "Tangkapan layar: ukuran gambar tidak valid",
+        "msg.shot.timeout" => "Tangkapan layar tidak tiba – dibatalkan.",
+        "msg.bookmark" => "Bookmark {n}",
+        "msg.signature" => "Signature “BM”",
+        "insp.i8" => "int8 (signed byte)",
+        "insp.u8" => "uint8 (byte)",
+        "insp.i16" => "int16 (short)",
+        "insp.u16" => "uint16 (ushort)",
+        "insp.i32" => "int32 (int)",
+        "insp.u32" => "uint32 (uint)",
+        "insp.i64" => "int64",
+        "insp.u64" => "uint64",
+        "insp.f32" => "float",
+        "insp.f64" => "double",
+        "insp.bin" => "Biner",
+        "insp.char" => "Karakter (ASCII)",
+        "insp.utf16" => "Karakter (UTF-16)",
+        "insp.dosdate" => "Tanggal DOS",
+        "insp.dostime" => "Waktu DOS",
+        "insp.unixtime" => "Waktu Unix (time_t)",
+        "insp.filetime" => "Windows FILETIME",
+        "search.text" => "Teks (ASCII/UTF-8)",
+        "search.utf16" => "Teks (UTF-16)",
+        "search.hex" => "Byte hex",
+        "search.int32" => "Integer (32-bit)",
+        "checksum.crc32" => "CRC-32",
+        "checksum.adler32" => "Adler-32",
+        "checksum.sum8" => "Sum (8-bit)",
+        "checksum.sum16" => "Sum (16-bit)",
+        "checksum.sum32" => "Sum (32-bit)",
+        "checksum.xor8" => "XOR (8-bit)",
+        "checksum.md5" => "MD5",
+        "checksum.sha1" => "SHA-1",
+        "checksum.sha256" => "SHA-256",
+        "unit.bytes" => "{n} byte",
+        "err.line.word" => "Baris",
+        "err.line" => "Baris {line}: {m}",
+        "err.abort.word" => "Dibatalkan",
+        "err.toomanysteps" => "Dibatalkan: terlalu banyak langkah (perulangan tak terbatas?)",
+        "err.toomanyfields" => "Dibatalkan: terlalu banyak field",
+        "err.eof_read" => "Akhir file tercapai saat membaca di 0x{at}",
+        "err.eof" => "Akhir file tercapai",
+        "err.eof_in" => "Akhir file tercapai dalam “{name}” pada elemen {i}",
+        "err.eof_need" => "Akhir file tercapai: “{name}” membutuhkan {total} byte dari 0x{pos}",
+        "err.unknownvar" => "Variabel tidak dikenal “{n}” (deklarasikan dengan “local”)",
+        "err.unknownvar2" => "Variabel tidak dikenal “{n}”",
+        "err.unknownname" => "Nama tidak dikenal “{n}”",
+        "err.fieldnotfound" => "Field tidak ditemukan",
+        "err.indexout" => "Indeks {idx} di luar rentang {name}",
+        "err.negsize" => "Baris {line}: ukuran field negatif untuk “{name}”",
+        "err.unknowntype" => "Tipe tidak dikenal “{ty}”",
+        "err.fieldbig" => "Field terlalu besar",
+        "err.elems" => "[{n} elemen]",
+        "err.optext" => "Operator {op} tidak valid untuk teks",
+        "err.div0" => "Pembagian dengan nol",
+        "err.unknownop" => "Operator tidak dikenal {op}",
+        "err.syntax" => "Kesalahan sintaksis: {e}",
+        "err.fnarg.sizeof" => "sizeof: argumen tidak ada",
+        "err.unknown.sizeof" => "sizeof: tidak dikenal",
+        "err.fnarg.startof" => "startof: argumen tidak ada",
+        "err.unknown.startof" => "startof: tidak dikenal",
+        "err.fnarg.exists" => "exists: argumen tidak ada",
+        "err.unknownfunc" => "Fungsi tidak dikenal “{name}”",
+        "err.warn" => "Peringatan: {s}",
+        "err.incr" => "Baris {line}: ++/-- hanya untuk variabel",
+        "err.dowhile" => "Baris {line}: diharapkan “while”",
+        "err.unexpected_end" => "Akhir tidak diharapkan: “}” tidak ada",
+        "err.bracket_missing" => "“]” tidak ada",
+        "err.gt_missing" => "“>” tidak ada",
+        "err.badnum" => "Baris {line}: angka tidak valid",
+        "err.badchar" => "Baris {line}: karakter tidak diharapkan “{c}”",
+        "err.expected" => "Baris {line}: diharapkan “{p}”, ditemukan {t}",
+        "err.expected_name" => "Baris {line}: diharapkan sebuah nama, ditemukan {t}",
+        "err.unexpected" => "Baris {line}: {t} tidak diharapkan",
+        "err.eof.tok" => "akhir file",
+        "tpl.bmp" => "Gambar BMP",
+        "tpl.png" => "Gambar PNG",
+        "tpl.gif" => "Gambar GIF",
+        "tpl.wav" => "Audio WAV",
+        "tpl.zip" => "Arsip ZIP",
+        "tpl.exe" => "EXE/DLL (PE)",
+        "scene.sample.bmp" => "contoh.bmp",
+        "scene.sample.newbmp" => "contoh-baru.bmp",
+        "scene.sample.png" => "gambar.png",
+        "scene.bm.pixels" => "Data piksel",
+        "scene.bm.width" => "Lebar gambar",
+        "scene.tpl.bmp" => "Gambar BMP",
+        "scene.png.text" => "Dibuat dengan 101Craft",
+        "main.unknownscene" => "Scene tidak dikenal “{s}”. Tersedia: {list}",
+        _ => return None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -943,17 +1334,23 @@ mod tests {
     #[test]
     fn english_is_the_default() {
         assert_eq!(Lang::default(), Lang::En);
-        // A missing config file must not fall back to German.
+        // A missing config file must not fall back to German or Indonesian.
         assert_eq!(Lang::from_code(""), Lang::En);
         assert_eq!(Lang::from_code("Deutsch"), Lang::De);
+        assert_eq!(Lang::from_code("id"), Lang::Id);
+        assert_eq!(Lang::from_code("Bahasa Indonesia"), Lang::Id);
     }
 
     #[test]
-    fn both_languages_are_wired_up() {
+    fn all_languages_are_wired_up() {
         for key in ["menu.file", "menu.save", "panel.inspector", "tb.undo", "status.size"] {
-            assert_ne!(get(Lang::En, key), get(Lang::De, key), "{key} not translated");
+            assert_ne!(get(Lang::En, key), get(Lang::De, key), "{key} not translated in German");
             assert!(!get(Lang::En, key).is_empty());
             assert!(!get(Lang::De, key).is_empty());
+            assert!(!get(Lang::Id, key).is_empty());
+        }
+        for key in ["menu.new", "menu.open", "menu.save", "panel.openfiles", "status.nofile"] {
+            assert_ne!(get(Lang::En, key), get(Lang::Id, key), "{key} not translated in Indonesian");
         }
     }
 
@@ -961,15 +1358,21 @@ mod tests {
     fn unknown_keys_pass_through() {
         assert_eq!(get(Lang::En, "free-form text"), "free-form text");
         assert_eq!(get(Lang::De, "free-form text"), "free-form text");
+        assert_eq!(get(Lang::Id, "free-form text"), "free-form text");
     }
 
     #[test]
     fn placeholders_are_substituted() {
         assert_eq!(tr!(Lang::En, "msg.bookmark", n = 3), "Bookmark 3");
         assert_eq!(tr!(Lang::De, "msg.bookmark", n = 3), "Lesezeichen 3");
+        assert_eq!(tr!(Lang::Id, "msg.bookmark", n = 3), "Bookmark 3");
         assert_eq!(
             tr!(Lang::En, "panel.cs.done", size = "4 KiB"),
             "Checksums computed over 4 KiB."
+        );
+        assert_eq!(
+            tr!(Lang::Id, "panel.cs.done", size = "4 KiB"),
+            "Checksum dihitung untuk 4 KiB."
         );
         // A placeholder the string does not use is left alone, not panicked on.
         assert_eq!(tr!(Lang::En, "menu.file", n = 1), "File");
