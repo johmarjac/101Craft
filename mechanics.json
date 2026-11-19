@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "values": [
+    {"name": "Delete Current key", "group": "controls", "value": "Delete", "source": "function 0x1404149c0"},
+    {"name": "Delete Previous keys", "group": "controls", "value": "Backspace, Shift+Backspace", "source": "function 0x1404149c0"},
+    {"name": "Backspace mid-byte", "group": "editing", "value": "delete current byte", "source": "function 0x140420860"},
+    {"name": "Backspace at byte boundary", "group": "editing", "value": "delete previous byte", "source": "function 0x140420860"},
+    {"name": "Backspace at start without selection", "group": "editing", "value": "nothing", "source": "function 0x140420860"},
+    {"name": "Backspace with selection", "group": "editing", "value": "delete selection", "source": "functions 0x140420860, 0x14041a5c0"},
+    {"name": "Delete with selection", "group": "editing", "value": "delete selection", "source": "function 0x1401428b0"},
+    {"name": "Allow delete in overwrite mode (default)", "group": "options", "value": true, "source": "function 0x1403d5db0 (0x1403d6d33)"},
+    {"name": "Delete refused message", "group": "messages", "value": "Delete not allowed in overwrite mode.", "source": "function 0x1401428b0"},
+    {"name": "Deleted message prefix", "group": "messages", "value": "Deleted: ", "source": "function 0x1401428b0"},
+    {"name": "Byte count hex suffix from", "group": "messages", "value": 10, "unit": "bytes", "source": "function 0x14042e580"},
+    {"name": "Cut without selection message", "group": "messages", "value": "No bytes selected.", "source": "function 0x140142730"},
+    {"name": "Bytes per row (default)", "group": "view", "value": 16, "unit": "bytes", "estimated": true},
+    {"name": "Default edit mode", "group": "editing", "value": "overwrite", "estimated": true}
+  ]
+}

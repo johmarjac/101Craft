@@ -16,6 +16,40 @@ pub struct Splice {
     pub cursor_before: usize,
 }
 
+/// What an edit key did, for the status bar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EditMsg {
+    Deleted(usize),
+    Cut(usize),
+    /// Delete/Backspace in overwrite mode while that is switched off.
+    DeleteRefused,
+    /// Cut with nothing selected.
+    NoSelection,
+}
+
+/// Byte count the way the status bar words it (0x14042e580): "1 byte", "N bytes" below 10,
+/// "N [Xh] bytes" from 10 on.
+pub fn byte_count(lang: crate::i18n::Lang, n: usize) -> String {
+    if n == 1 {
+        crate::tr!(lang, "unit.byte1")
+    } else if n < 10 {
+        crate::tr!(lang, "unit.bytes", n = n)
+    } else {
+        crate::tr!(lang, "unit.bytesbig", n = n, h = format!("{n:X}"))
+    }
+}
+
+impl EditMsg {
+    pub fn text(self, lang: crate::i18n::Lang) -> String {
+        match self {
+            EditMsg::Deleted(n) => crate::tr!(lang, "msg.deleted", n = byte_count(lang, n)),
+            EditMsg::Cut(n) => crate::tr!(lang, "msg.cut", n = byte_count(lang, n)),
+            EditMsg::DeleteRefused => crate::tr!(lang, "msg.delete.notallowed"),
+            EditMsg::NoSelection => crate::tr!(lang, "msg.noselection"),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Bookmark {
     pub name: String,
@@ -246,27 +280,41 @@ impl Document {
         self.modified = false;
     }
 
-    /// Delete the selection (or the byte at the cursor).
-    pub fn delete_forward(&mut self) {
+    /// Delete the selection, or the byte at the cursor. Returns how many bytes went
+    /// (MECHANICS.md: "Delete Current", 0x1401428b0).
+    pub fn delete_forward(&mut self) -> usize {
+        self.nibble_low = false;
         if let Some((s, e)) = self.selection() {
             self.splice(s, e - s, &[]);
-            self.cursor = s;
+            self.cursor = s.min(self.data.len());
             self.anchor = None;
+            e - s
         } else if self.cursor < self.data.len() {
             self.splice(self.cursor, 1, &[]);
+            1
+        } else {
+            0
         }
-        self.nibble_low = false;
     }
 
-    pub fn delete_backward(&mut self) {
+    /// Backspace / Shift+Backspace ("Delete Previous", 0x140420860): the caret steps one
+    /// character left, then whatever is under it (the selection, else that byte) is deleted.
+    /// Mid-byte (after the first hex digit) that is the current byte; at a byte boundary it
+    /// is the previous one; at the very start without a selection nothing happens.
+    pub fn delete_backward(&mut self) -> usize {
         if self.selection().is_some() {
-            self.delete_forward();
-        } else if self.cursor > 0 {
-            let p = self.cursor - 1;
-            self.splice(p, 1, &[]);
-            self.cursor = p;
+            return self.delete_forward();
         }
-        self.nibble_low = false;
+        if self.nibble_low && self.column == Column::Hex {
+            // Caret steps back to the first digit of the same byte.
+            return self.delete_forward();
+        }
+        if self.cursor == 0 || self.data.is_empty() {
+            self.nibble_low = false;
+            return 0;
+        }
+        self.cursor = (self.cursor - 1).min(self.data.len() - 1);
+        self.delete_forward()
     }
 
     /// Write bytes at the cursor, inserting or overwriting.
@@ -402,5 +450,59 @@ mod tests {
         assert_eq!(d.data, vec![0xAB]);
         d.write_bytes(b"hi", true);
         assert_eq!(d.data, vec![0xAB, b'h', b'i']);
+    }
+
+    #[test]
+    fn backspace_on_new_document() {
+        let mut d = Document::new("neu", Vec::new(), None);
+        for v in [1u8, 2, 3, 4, 5, 6] {
+            d.type_nibble(v, true);
+        }
+        assert_eq!(d.data, vec![0x12, 0x34, 0x56]);
+        // Click a byte, then Backspace.
+        d.set_cursor(1, false);
+        d.delete_backward();
+        assert_eq!(d.data, vec![0x34, 0x56]);
+        assert_eq!(d.cursor, 0);
+        // Drag-select one byte, then Backspace.
+        d.set_cursor(1, false);
+        d.anchor = Some(1);
+        d.delete_backward();
+        assert_eq!(d.data, vec![0x34]);
+        assert!(d.cursor <= d.len());
+        // Select everything and delete until empty.
+        d.anchor = Some(0);
+        d.cursor = 0;
+        d.delete_backward();
+        assert!(d.data.is_empty());
+        assert_eq!(d.delete_backward(), 0);
+        assert_eq!(d.delete_forward(), 0);
+        assert_eq!(d.cursor, 0);
+    }
+
+    #[test]
+    fn backspace_mid_byte_deletes_current() {
+        let mut d = Document::new("t", vec![0x11, 0x22, 0x33], None);
+        d.set_cursor(1, false);
+        d.type_nibble(0xA, false); // first digit typed: caret is mid-byte
+        assert!(d.nibble_low);
+        assert_eq!(d.delete_backward(), 1);
+        assert_eq!(d.data, vec![0x11, 0x33]);
+        assert_eq!(d.cursor, 1);
+        // At a byte boundary Backspace takes the previous byte.
+        assert_eq!(d.delete_backward(), 1);
+        assert_eq!(d.data, vec![0x33]);
+        assert_eq!(d.cursor, 0);
+        // At the start nothing happens.
+        assert_eq!(d.delete_backward(), 0);
+        assert_eq!(d.data, vec![0x33]);
+    }
+
+    #[test]
+    fn deleted_message_format() {
+        use crate::i18n::Lang;
+        assert_eq!(byte_count(Lang::En, 1), "1 byte");
+        assert_eq!(byte_count(Lang::En, 9), "9 bytes");
+        assert_eq!(byte_count(Lang::En, 16), "16 [10h] bytes");
     }
 }

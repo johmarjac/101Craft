@@ -68,6 +68,8 @@ pub struct App {
     pub bytes_per_row: usize,
     pub font_size: f32,
     pub insert: bool,
+    /// Options default 1 (0x1403d6d33); checked in 0x1401428b0.
+    pub allow_delete_overwrite: bool,
     pub little_endian: bool,
     pub dark: bool,
     pub auto_template: bool,
@@ -113,6 +115,7 @@ impl App {
             bytes_per_row: 16,
             font_size: 13.0,
             insert: false,
+            allow_delete_overwrite: true,
             little_endian: true,
             dark: false,
             auto_template: true,
@@ -205,6 +208,25 @@ impl App {
 
     pub fn doc_mut(&mut self) -> Option<&mut Document> {
         self.docs.get_mut(self.active)
+    }
+
+    /// Edit > Delete: same rules as the Delete key (0x1401428b0).
+    pub fn delete_from_menu(&mut self) {
+        use crate::doc::EditMsg;
+        let allowed = self.insert || self.allow_delete_overwrite;
+        let Some(d) = self.docs.get_mut(self.active) else { return };
+        let msg = if !allowed {
+            Some(EditMsg::DeleteRefused)
+        } else {
+            match d.delete_forward() {
+                0 => None,
+                n => Some(EditMsg::Deleted(n)),
+            }
+        };
+        if let Some(m) = msg {
+            let s = m.text(self.lang);
+            self.log(s);
+        }
     }
 
     pub fn log(&mut self, s: impl Into<String>) {

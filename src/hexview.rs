@@ -83,6 +83,8 @@ impl Palette {
 pub struct ViewOptions {
     pub bytes_per_row: usize,
     pub font_size: f32,
+    /// "Allow Delete in Overwrite Mode" (options default 1 at 0x1403d6d33).
+    pub allow_delete_overwrite: bool,
 }
 
 #[derive(Default)]
@@ -90,6 +92,7 @@ pub struct ViewResult {
     pub focused: bool,
     pub toggle_insert: bool,
     pub hovered_byte: Option<usize>,
+    pub message: Option<crate::doc::EditMsg>,
 }
 
 const SCROLLBAR_W: f32 = 14.0;
@@ -232,7 +235,21 @@ pub fn hex_view(ui: &mut Ui, doc: &mut Document, id: Id, opts: &ViewOptions, ins
     if focused {
         let events = ui.input(|i| i.events.clone());
         for ev in events {
-            handle_event(ui, doc, ev, bpr, visible, insert, &mut out);
+            handle_event(ui, doc, ev, bpr, visible, insert, opts.allow_delete_overwrite, &mut out);
+        }
+    }
+
+    // Keys may have inserted or deleted bytes: everything below must use the new length,
+    // or painting reads past the end of the data.
+    let len = doc.len();
+    let rows = len / bpr + 1;
+    let max_top = rows.saturating_sub(visible);
+    doc.cursor = doc.cursor.min(len);
+    if let Some(a) = doc.anchor {
+        if len == 0 {
+            doc.anchor = None;
+        } else {
+            doc.anchor = Some(a.min(len - 1));
         }
     }
 
@@ -328,7 +345,7 @@ pub fn hex_view(ui: &mut Ui, doc: &mut Document, id: Id, opts: &ViewOptions, ins
                 }
                 break;
             }
-            let b = doc.data[pos];
+            let Some(&b) = doc.data.get(pos) else { break };
             let selected = matches!(sel, Some((s, e)) if pos >= s && pos < e);
             let mut fg = if b == 0 { pal.zero_fg } else { pal.byte_fg };
             let mut bg = None;
@@ -388,7 +405,19 @@ fn draw_cursor(painter: &egui::Painter, doc: &Document, hex_cell: Rect, txt_cell
     painter.rect_stroke(passive, CornerRadius::same(2), Stroke::new(1.0, pal.cursor.gamma_multiply(0.6)), StrokeKind::Inside);
 }
 
-fn handle_event(ui: &mut Ui, doc: &mut Document, ev: Event, bpr: usize, visible: usize, insert: bool, out: &mut ViewResult) {
+fn handle_event(
+    ui: &mut Ui,
+    doc: &mut Document,
+    ev: Event,
+    bpr: usize,
+    visible: usize,
+    insert: bool,
+    allow_delete_overwrite: bool,
+    out: &mut ViewResult,
+) {
+    use crate::doc::EditMsg;
+    // 0x1401428b0: in overwrite mode deleting is refused unless the option allows it.
+    let may_delete = insert || allow_delete_overwrite;
     let len = doc.len();
     match ev {
         Event::Key {
@@ -441,8 +470,22 @@ fn handle_event(ui: &mut Ui, doc: &mut Document, ev: Event, bpr: usize, visible:
                     doc.nibble_low = false;
                 }
                 Key::Insert => out.toggle_insert = true,
-                Key::Delete => doc.delete_forward(),
-                Key::Backspace => doc.delete_backward(),
+                Key::Delete | Key::Backspace if !may_delete => {
+                    out.message = Some(EditMsg::DeleteRefused);
+                }
+                Key::Delete => {
+                    let n = doc.delete_forward();
+                    if n > 0 {
+                        out.message = Some(EditMsg::Deleted(n));
+                    }
+                }
+                // Backspace and Shift+Backspace both mean "Delete Previous" (0x1404149c0).
+                Key::Backspace => {
+                    let n = doc.delete_backward();
+                    if n > 0 {
+                        out.message = Some(EditMsg::Deleted(n));
+                    }
+                }
                 Key::Escape => {
                     doc.anchor = None;
                     doc.nibble_low = false;
@@ -484,12 +527,21 @@ fn handle_event(ui: &mut Ui, doc: &mut Document, ev: Event, bpr: usize, visible:
                 }
             }
         }
-        Event::Copy | Event::Cut => {
+        Event::Copy => {
             if let Some(text) = copy_text(doc) {
                 ui.ctx().copy_text(text);
-                if matches!(ev, Event::Cut) {
-                    doc.delete_forward();
-                }
+            }
+        }
+        // 0x140142730: Cut needs a selection, then copies and deletes it.
+        Event::Cut => {
+            if doc.selection().is_none() {
+                out.message = Some(EditMsg::NoSelection);
+            } else if !may_delete {
+                out.message = Some(EditMsg::DeleteRefused);
+            } else if let Some(text) = copy_text(doc) {
+                ui.ctx().copy_text(text);
+                let n = doc.delete_forward();
+                out.message = Some(EditMsg::Cut(n));
             }
         }
         Event::Paste(s) => {
