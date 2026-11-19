@@ -135,9 +135,7 @@ impl App {
                     .add(egui::Button::new(tr!(lang, "menu.deleteselection")).shortcut_text(tr!(lang, "sc.delete")))
                     .clicked()
                 {
-                    if let Some(d) = self.doc_mut() {
-                        d.delete_forward();
-                    }
+                    self.delete_from_menu();
                     ui.close();
                 }
                 if ui.button(tr!(lang, "menu.insertbytes")).clicked() {
@@ -161,6 +159,7 @@ impl App {
                     self.insert = !self.insert;
                     ui.close();
                 }
+                ui.checkbox(&mut self.allow_delete_overwrite, tr!(lang, "menu.allowdeleteovr"));
             });
             ui.menu_button(tr!(lang, "menu.search"), |ui| {
                 if ui
@@ -667,6 +666,7 @@ impl App {
         let opts = ViewOptions {
             bytes_per_row: self.bytes_per_row,
             font_size: self.font_size,
+            allow_delete_overwrite: self.allow_delete_overwrite,
         };
         // Side-by-side compare view.
         if let (Some((a, b)), true) = (self.compare.pair, self.compare.split) {
@@ -691,6 +691,10 @@ impl App {
         self.hovered_byte = r.hovered_byte;
         if r.toggle_insert {
             self.insert = !self.insert;
+        }
+        if let Some(m) = r.message {
+            let s = m.text(self.lang);
+            self.log(s);
         }
     }
 
@@ -729,6 +733,10 @@ impl App {
             }
             if r.toggle_insert {
                 self.insert = !self.insert;
+            }
+            if let Some(m) = r.message {
+                let s = m.text(lang);
+                self.log(s);
             }
         }
     }
